@@ -3,10 +3,6 @@
 
 # Add the user to "sudo"
 #   Display the private-key on the screen and ask the user 2times to copy it
-# Edit /etc/ssh/sshd_config
-    # PermitRootLogin no
-    # AuthorizedKeyFile
-    # PasswordAuthentication no
 # Install sudo curl screen
 # Restart systemctl restart ssh
 # Ask the user to NOT logout yet
@@ -187,56 +183,102 @@ fi
 
 
 ##############################################################
-# Remove root login
-# Disable password login
 # Enable SSH-only login
 ##############################################################
 
 # Backup the sshd_config file
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak || exit 1
 
-# Check if "PermitRootLogin no" is set as required
-#   If not set it
-#   If commented - add another line below it with correct entry
-
-# Check if "AuthorizedKeysFile %h/.ssh/authorized_keys" is set as required
-#   If not set it
-#   If commented - add another line below it with correct entry
-
-# Check if "PasswordAuthentication no" is set as required
-#   If not set it
-#   If commented - add another line below it with correct entry
-
 function config_search_regex(){
-    local isCommented=$2
-    local search_val=$1
+    local search_key=$1
+    declare -i isCommented=$2
+    local value=$3
 
-    if [[ "$isCommented" -gt 0 ]]; then
-        # Search Regex for a commented out field
-        echo '(^ *)#.*'"$search_val"'.*(yes|no)( *)$'
-    else
+    if [[ "$isCommented" -eq 1 ]] && [[ ! "$value" ]]; then
         # Search Regex for an uncommented (active) field
-        echo '(^ *)'"$search_val"'.*(yes|no)( *)$'
+        echo '(^ *)'"$search_key"'( *).*([[:word:]]+)( *)$'
+    elif [[ "$isCommented" -eq 2 ]] && [[ ! "$value" ]]; then
+        # Search Regex for a commented out field
+        echo '(^ *)#.*'"$search_key"'( *).*([[:word:]]+)( *)$'
+
+    elif [[ "$isCommented" -eq 1 ]] && [[ "$value" ]]; then
+        # Search Regex for an active field with specified value
+        echo '(^ *)'"$search_key"'( *)('"$value"')( *)$'
+    elif [[ "$isCommented" -eq 2 ]] && [[ "$value" ]]; then
+        # Search Regex for an commented (inactive) field with specified value
+        echo '(^ *)#.*'"$search_key"'( *)('"$value"')( *)$'
+
+    else
+        exit 1    
     fi
 }
 
-COMMENTED_SEARCH_REGEX=$(config_search_regex "PasswordAuthentication" "1")
-ACTIVE_SEARCH_REGEX=$(config_search_regex "PasswordAuthentication")
 
-# All lines that start with a commented out "PasswordAuthentication no"
-COMMENTED_LINES="$(grep -Pn "$COMMENTED_SEARCH_REGEX" /etc/ssh/sshd_config)"
+function set_config_key(){
+    local file_location=$1
+    local key=$2
+    local value=$3
 
-# All lines that start WITHOUT a commented out "PasswordAuthentication no"
-ACTIVE_LINES="$(grep -Pn "$ACTIVE_SEARCH_REGEX" /etc/ssh/sshd_config)"
+    ACTIVE_KEYS_REGEX=$(config_search_regex "$key" "1")
+    ACTIVE_CORRECT_KEYS_REGEX=$(config_search_regex "$key" "1" "$value")
+    INACTIVE_KEYS_REGEX=$(config_search_regex "$key" "2")
 
-# If more than 1 active sections - comment out all except the last one 
-if [[ "$(wc -l ${ACTIVE_LINES})" -gt 1 ]]; then
-    Remove
-fi
-
-# If "PassAuthentication" is set to "yes" - revert it to "no"
-if [[ "$ACTIVE_LINES" -gt 0 ]]; then
-    if [ $(grep -Pcn '(^ *)PasswordAuthentication.*no( *)$' /etc/ssh/sshd_config) == 0 ]; then
-        set
+    # If no keys present - insert the correct key to the end of the file
+    if [[ $(grep -Pnc "$INACTIVE_KEYS_REGEX" "$file_location") -eq 0 ]] && [[ $(grep -Pnc "$ACTIVE_KEYS_REGEX" "$file_location") -eq 0 ]];
+    then
+        echo "$key" "$value" >> "$file_location"
     fi
-fi
+
+    # If Config file already has active keys
+    #  Keep only the LAST correct one and comment out the rest
+    if [[ $(grep -Pnc "$ACTIVE_KEYS_REGEX" "$file_location") -gt 0 ]]; 
+    then
+        # Last correct active entry's line number
+        LAST_CORRECT_LINE=$(grep -Pn "$ACTIVE_CORRECT_KEYS_REGEX" "$file_location" | tail -1 | cut -d: -f 1)
+
+        # Loop through each of the active lines
+        grep -Pn "$ACTIVE_KEYS_REGEX" "$file_location" | while read -r i; 
+        do
+            # Get the line number
+            LINE_NUMBER=$(echo "$i" | cut -d: -f 1 )
+
+            # If this is the last correct entry - break
+            if [[ $LAST_CORRECT_LINE -ne 0 ]] && [[ $LINE_NUMBER == "$LAST_CORRECT_LINE" ]]; then
+                break
+            fi
+
+            # Comment out the line
+            sed -i "$LINE_NUMBER"'s/.*/#&/' "$file_location"
+        done
+    fi
+
+    # If Config file has inactive keys and NO active keys 
+    # Append the appropriate key below the LAST inactive key
+    if [[ $(grep -Pnc "$INACTIVE_KEYS_REGEX" "$file_location") -gt 0 ]] && [[ $(grep -Pnc "$ACTIVE_KEYS_REGEX" "$file_location") -eq 0 ]]; 
+    then
+        # Get the line number of - last inactive key
+        LINE_NUMBER=$(grep -Pn "$INACTIVE_KEYS_REGEX" "$file_location" | tail -1 | cut -d: -f 1)
+
+        (( LINE_NUMBER++ ))
+
+        # Insert the correct setting below the last inactive key
+        sed -i "$LINE_NUMBER"'i'"$key"' '"$value" "$file_location"
+    fi
+}
+
+# Remove root login
+set_config_key "/etc/ssh/sshd_config" "PermitRootLogin" "no"
+
+# Disable password login
+set_config_key "/etc/ssh/sshd_config" "PasswordAuthentication" "no"
+
+# Set SSH Authorization-Keys path
+set_config_key "/etc/ssh/sshd_config" "AuthorizedKeysFile" '%h\/\.ssh\/authorized_keys'
+
+
+##############################################################
+# Enable SSH-only login
+##############################################################
+
+systemctl restart sshd
+
