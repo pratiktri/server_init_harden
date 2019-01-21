@@ -25,6 +25,10 @@
     # OVH
     # Hetzner
 
+# TODO - Keep all the event names in an array 
+    # - so easy to see all the steps
+    # Easy to change step name and order
+
 SCRIPT_NAME=server_harden
 SCRIPT_VERSION=0.2
 LOGFILE=/tmp/"$SCRIPT_NAME"_v"$SCRIPT_VERSION".log
@@ -189,6 +193,7 @@ read -r
 # Error Handling
 ##############################################################
 
+OP_CODE=0
 # keep state of the script
 # Each step has 3 states
     # 0 - not executed
@@ -197,12 +202,21 @@ read -r
     # 3 - Failed
 CreateNonRootUser=0
 CreateSSHKey=0
-AddToAuthkeysfile=0
 SecureAuthkeysfile=0
 EnableSSHOnly=0
 ChangeSourceList=0
 InstallReqSoftwares=0
 ChangeRootPwd=0
+
+function set_op_code() {
+    if [[ $OP_CODE -eq 0 ]] && [[ $1 -gt 0 ]]; then
+        OP_CODE=$1
+    fi
+}
+
+function reset_op_code(){
+    OP_CODE=0
+}
 
 function get_event_var_from_event() {
     case $1 in
@@ -211,9 +225,6 @@ function get_event_var_from_event() {
             ;;
         "Creating SSH Key for new user")
             echo "CreateSSHKey"
-            ;;
-        "Adding SSH Key to 'authorized_keys' file")
-            echo "AddToAuthkeysfile"
             ;;
         "Securing 'authorized_keys' file")
             echo "SecureAuthkeysfile"
@@ -248,12 +259,12 @@ function get_event_status() {
 }
 
 function revert_changes(){
+    file_log "Starting revert operation..."
+
     if [[ $1 = "Creating new user" ]]; then
         revert_create_user
     elif [[ $1 = "Creating SSH Key for new user" ]]; then
         revert_create_ssh_key
-    elif [[ $1 = "Adding SSH Key to 'authorized_keys' file" ]]; then
-        revert_add_to_authorized_key
     elif [[ $1 = "Securing 'authorized_keys' file" ]]; then
         revert_secure_authorized_key
     elif [[ $1 = "Enabling SSH-only login" ]]; then
@@ -264,79 +275,180 @@ function revert_changes(){
     elif [[ $1 = "Installing required softwares" ]]; then
         # This can be reverted back individually
         return 7
-    elif [[ $1 = "Changing root password" ]]; then
-        # CANNOT be reverted back
-        # Just use your old password
-        revert_root_pass_change
     fi
+
+    file_log "Revert operation completed"
 }
 
 function revert_create_user(){
+    local success;
+    file_log "Reverting New User Creation..."
+
     # Remove user and its home directory only if user was created
     if [[ $(getent passwd "$NORM_USER_NAME" | wc -l) -gt 0 ]]; then
         deluser --remove-home "$NORM_USER_NAME" 2>> "$LOGFILE" >&2
+        success=$?
+    fi
+
+    if [[ $success -eq 0 ]]; then
+        op_log "Reverting - New User Creation" "SUCCESSFUL"
+        file_log "Reverting New User Creation - Completed"
+    else
+        op_log "Reverting - New User Creation" "FAILED"
+        file_log "Reverting New User Creation - Failed"
     fi
 }
 
 function revert_create_ssh_key(){
+    local success;
 
     revert_create_user
+    file_log "Reverting SSH Key Generation..."
 
     KEY_FILE_BKPS=("$SSH_DIR"/"$NORM_USER_NAME".pem*"$BACKUP_EXTENSION")
 
     if [[ ${#KEY_FILE_BKPS[@]} -gt 0 ]]; then
-        unalias cp
+        unalias cp &>/dev/null
         for key in "${KEY_FILE_BKPS[@]}"; do
-            cp -rf "$key" "${key//$BACKUP_EXTENSION/}" || exit 1
+            cp -rf "$key" "${key//$BACKUP_EXTENSION/}" 2>> "$LOGFILE" >&2
+            success=$?
         done
     fi
-}
 
-function revert_add_to_authorized_key(){
-    revert_create_ssh_key
-
-    if [[ -f "$SSH_DIR"/authorized_keys"$BACKUP_EXTENSION" ]]; then
-        unalias cp
-        chattr -i "$SSH_DIR"/authorized_keys
-        #chmod 700 "$SSH_DIR"/authorized_keys
-        cp -rf "$SSH_DIR"/authorized_keys"$BACKUP_EXTENSION" "$SSH_DIR"/authorized_keys
-        chmod 400 "$SSH_DIR"/authorized_keys
-        chattr +i "$SSH_DIR"/authorized_keys
+    if [[ $success -eq 0 ]]; then
+        op_log "Reverting - SSH Key Generation" "SUCCESSFUL"
+        file_log "Reverting SSH Key Generation - Completed"
+    else
+        op_log "Reverting - SSH Key Generation" "FAILED"
+        file_log "Reverting SSH Key Generation - Failed"
     fi
 }
 
 function revert_secure_authorized_key(){
-    revert_add_to_authorized_key
+    local success;
+
+    revert_create_ssh_key
+    file_log "Reverting SSH Key Authorizations..."
+
+    if [[ -f "$SSH_DIR"/authorized_keys"$BACKUP_EXTENSION" ]]; then
+        unalias cp &>/dev/null
+        {
+            chattr -i "$SSH_DIR"/authorized_keys
+            #chmod 700 "$SSH_DIR"/authorized_keys
+            cp -rf "$SSH_DIR"/authorized_keys"$BACKUP_EXTENSION" "$SSH_DIR"/authorized_keys
+            success=$?
+            chmod 400 "$SSH_DIR"/authorized_keys
+            chattr +i "$SSH_DIR"/authorized_keys
+        } 2>> "$LOGFILE" >&2
+    fi
+
+    if [[ $success -eq 0 ]]; then
+        op_log "Reverting - SSH Key Authorizations" "SUCCESSFUL"
+        file_log "Reverting SSH Key Authorizations - Completed"
+    else
+        op_log "Reverting - SSH Key Authorizations" "FAILED"
+        file_log "Reverting SSH Key Authorizations - Failed"
+    fi
 }
 
 function revert_ssh_only_login(){
+    local success;
+
     revert_secure_authorized_key
+    file_log "Reverting SSH-only Login..."
 
     if [[ -f /etc/ssh/sshd_config"$BACKUP_EXTENSION" ]]; then
-        unalias cp
-        cp -rf /etc/ssh/sshd_config"$BACKUP_EXTENSION" /etc/ssh/sshd_config
+        unalias cp &>/dev/null
+        cp -rf /etc/ssh/sshd_config"$BACKUP_EXTENSION" /etc/ssh/sshd_config 2>> "$LOGFILE" >&2
+        success=$?
+    fi
+
+    if [[ $success -eq 0 ]]; then
+        op_log "Reverting - SSH-only Login" "SUCCESSFUL"
+        file_log "Reverting SSH-only Login - Completed"
+    else
+        op_log "Reverting - SSH-only Login" "FAILED"
+        file_log "Reverting SSH-only Login - Failed"
     fi
 }
 
 function revert_source_list_changes(){
+    local success;
+    file_log "Reverting Source_list Changes..."
+
     if [[ -f /etc/apt/sources.list"${BACKUP_EXTENSION}" ]]; then
-        unalias cp
-        cp -rf /etc/apt/sources.list"${BACKUP_EXTENSION}" /etc/apt/sources.list
+        unalias cp &>/dev/null
+        cp -rf /etc/apt/sources.list"${BACKUP_EXTENSION}" /etc/apt/sources.list 2>> "$LOGFILE" >&2
+        success=$?
     fi
 
     SOURCE_FILES_BKP=(/etc/apt/source*/*.list"${BACKUP_EXTENSION}")
     if [[ ${#SOURCE_FILES_BKP[@]} -gt 0 ]]; then
-        unalias cp
+        unalias cp &>/dev/null
         for file in "${SOURCE_FILES[@]}";
         do
-            cp -rf "$file" "${file//$BACKUP_EXTENSION/}" || exit 1
+            cp -rf "$file" "${file//$BACKUP_EXTENSION/}" 2>> "$LOGFILE" >&2
         done
+    fi
+
+    if [[ $success -eq 0 ]]; then
+        op_log "Reverting - Source_list Changes" "SUCCESSFUL"
+        file_log "Reverting Source_list Changes - Completed"
+    else
+        op_log "Reverting - Source_list Changes" "FAILED"
+        file_log "Reverting Source_list Changesn - Failed"
     fi
 }
 
 function revert_root_pass_change(){
-        # If root password changed - show the new root password
-    true
+    echo
+    center_err_text "Changing root password failed..."
+    center_err_text "Your earlier root password remains VALID"
+}
+
+function finally(){
+    # If something failed - try to revert things back
+    if [[ "$#" -gt 0 ]]; then
+        echo
+        center_err_text "!!! ERROR OCCURED DURING OPERATION !!!"
+        center_err_text "!!! Reverting changes !!!"
+        center_err_text "Please look at $LOGFILE for details"
+        echo
+        revert_changes "$1"
+
+        # If restoration failed - well you are f**ked
+    fi
+    
+    #Recap ONLY if NO IMPORTANT operations reverted
+    if [[ $CreateNonRootUser -eq 3 ]] || 
+        [[ $CreateSSHKey -eq 3 ]] || 
+        [[ $SecureAuthkeysfile -eq 3 ]] || 
+        [[ $EnableSSHOnly -eq 3 ]]; then
+        return 1
+    else
+        line_fill "$CHORIZONTAL" $CLINESIZE
+        recap "User Name" "$CreateNonRootUser" "$NORM_USER_NAME"
+        recap "User's Password" "$CreateNonRootUser" "$USER_PASS"
+        recap "SSH Private Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem
+        recap "SSH Public Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
+        recap "SSH Key Passphrase" "$CreateSSHKey" "$KEY_PASS"    
+        if [[ "$RESET_ROOT_PWD" == "y" ]]; then
+            recap "New root Password" "$ChangeRootPwd" "$PASS_ROOT"
+        fi
+        line_fill "$CHORIZONTAL" $CLINESIZE
+    fi
+
+    if [[ $ChangeSourceList -eq 3 ]] ||
+       [[ $InstallReqSoftwares -eq 3 ]] ||
+       [[ $ChangeRootPwd -eq 3 ]]; then
+        echo
+        center_err_text "Some operations failed..."
+        center_err_text "These may NOT be catastrophic"
+        center_err_text "Please look at $LOGFILE for details"
+        revert_changes "$1"
+        echo 
+        echo
+    fi
 }
 
 
@@ -346,6 +458,25 @@ function revert_root_pass_change(){
 
 CVERTICAL="|"
 CHORIZONTAL="_"
+CLINESIZE=64
+
+function center_text(){
+  textsize=${#1}
+  width=$2
+  span=$((("$width" + "$textsize") / 2))
+  printf "%${span}s" "$1"
+}
+
+function center_err_text(){
+    printf "${CRED}"
+    center_text "$1" $CLINESIZE
+    printf "${CEND}\\n"
+}
+
+function center_reg_text(){
+    center_text "$1" $CLINESIZE
+    printf "\\n"
+}
 
 function horizontal_fill() {
     local char=$1
@@ -370,18 +501,14 @@ function op_log() {
 
     if [ "$RESULT" = "SUCCESSFUL" ]
     then
-        update_event_status "${EVENT}" 2
         printf "\r%33s %7s [${CGREEN}${RESULT}${CEND}]\\n" "$EVENT" " "
         file_log "${EVENT} - ${RESULT}"
     elif [ "$RESULT" = "FAILED" ] 
     then
-        update_event_status "${EVENT}" 3
         printf "\r%33s %7s [${CRED}${RESULT}${CEND}]\\n" "$EVENT" " "
-        printf "\\n\\nPlease look at %s\\n\\n" "$LOGFILE"
         file_log "${EVENT} - ${RESULT}"
-        finally "$EVENT"
+
     else
-        update_event_status "${EVENT}" 1
         printf "%33s %7s [${CRED}..${CEND}]" "$EVENT" " "
         file_log "${EVENT} - begin..."
     fi
@@ -405,56 +532,40 @@ function recap (){
     line_fill "$CVERTICAL" 1
 }
 
-function finally(){
-    line_fill "$CHORIZONTAL" 64
-    recap "User Name" "$CreateNonRootUser" "$NORM_USER_NAME"
-    recap "User's Password" "$CreateNonRootUser" "$USER_PASS"
-    recap "SSH Private Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem
-    recap "SSH Public Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
-    recap "SSH Key Passphrase" "$CreateSSHKey" "$KEY_PASS"    
-    if [[ "$RESET_ROOT_PWD" == "y" ]]; then
-        recap "New root Password" "$ChangeRootPwd" "$PASS_ROOT"
-    fi
-    line_fill "$CHORIZONTAL" 64
-    echo
-    echo
-
-    # If something failed - try to revert things back
-    if [[ "$#" -gt 0 ]]; then
-        # show - something failed - trying to restore required changes
-        revert_changes "$1"
-
-        # If restoration failed - well you are f**ked
-    fi
-}
-
 
 ##############################################################
 # Create non-root user
 ##############################################################
 
+reset_op_code
+update_event_status "Creating new user" 1
 op_log "Creating new user"
 {
     if [[ $AUTO_GEN_USERNAME == 'y' ]]; then
-        NORM_USER_NAME="$(< /dev/urandom tr -cd 'a-z' | head -c 6)""$(< /dev/urandom tr -cd '0-9' | head -c 2)" || false
+        NORM_USER_NAME="$(< /dev/urandom tr -cd 'a-z' | head -c 6)""$(< /dev/urandom tr -cd '0-9' | head -c 2)" || exit 1
         file_log "Generated user name - ${NORM_USER_NAME}"
     fi
 
     # Generate a 15 character random password
-    USER_PASS="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
+    USER_PASS="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)" || exit 1
     file_log "Generated user password - ${USER_PASS}"
 
     # Create the user and assign the above password
-    echo -e "${USER_PASS}\\n${USER_PASS}" | adduser "$NORM_USER_NAME" -q --gecos "First Last,RoomNumber,WorkPhone,HomePhone" || false
+    echo -e "${USER_PASS}\\n${USER_PASS}" | adduser "$NORM_USER_NAME" -q --gecos "First Last,RoomNumber,WorkPhone,HomePhone"
+    set_op_code $?
 
     # Give root privilages to the above user
     usermod -aG sudo "$NORM_USER_NAME"
+    set_op_code $?
 } 2>> "$LOGFILE" >&2
 
-if [[ $? -eq 0 ]]; then
+if [[ $OP_CODE -eq 0 ]]; then
+    update_event_status "Creating new user" 2
     op_log "Creating new user" "SUCCESSFUL"
 else
+    update_event_status "Creating new user" 3
     op_log "Creating new user" "FAILED"
+    finally "Creating new user"
     exit 1;
 fi
 
@@ -463,6 +574,8 @@ fi
 # Create SSH Key for the above new user
 ##############################################################
 
+reset_op_code
+update_event_status "Creating SSH Key for new user" 1
 op_log "Creating SSH Key for new user"
 {
     shopt -s nullglob
@@ -472,22 +585,30 @@ op_log "Creating SSH Key for new user"
     # If SSH files already exist - rename them to .timestamp_bkp
     if [[ ${#KEY_FILES[@]} -gt 0 ]]; then
         for key in "${KEY_FILES[@]}"; do
-            cp "$key" "$key""$BACKUP_EXTENSION" || false
+            cp "$key" "$key""$BACKUP_EXTENSION"
+            set_op_code $?
             file_log "SSH Key File exists ($key) - Making backup ($key$BACKUP_EXTENSION) of the existing file"
         done
     fi
 
     SSH_DIR=/home/"$NORM_USER_NAME"/.ssh
-    mkdir "$SSH_DIR" || false
+    mkdir "$SSH_DIR"
+    set_op_code $?
     file_log "Created SSH directory - $SSH_DIR"
 
     # Generate a 15 character random password for key
     KEY_PASS="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
+    set_op_code $?
     file_log "Generated SSH Key Passphrase - ${KEY_PASS}"
 
     # Create a OpenSSH-compliant ed25519-type key
-    ssh-keygen -a 1000 -o -t ed25519 -N "$KEY_PASS" -C "$NORM_USER_NAME" -f "$SSH_DIR"/"$NORM_USER_NAME".pem -q || false
+    ssh-keygen -a 1000 -o -t ed25519 -N "$KEY_PASS" -C "$NORM_USER_NAME" -f "$SSH_DIR"/"$NORM_USER_NAME".pem -q
+    set_op_code $?
     file_log "Generated SSH Key File - $SSH_DIR/$NORM_USER_NAME.pem"
+
+    # Copy the generated public file to authorized_keys
+    echo "$SSH_DIR"/"$NORM_USER_NAME".pem.pub >> "$SSH_DIR"/authorized_keys
+    set_op_code $?
 
     # TODO - Below would capture bak files as well - filter out the bak files
     # See if the files actually got created
@@ -499,10 +620,14 @@ op_log "Creating SSH Key for new user"
     fi
 } 2>> "$LOGFILE" >&2
 
-if [[ $? -eq 0 ]]; then
+if [[ $OP_CODE -eq 0 ]]; then
+    update_event_status "Creating SSH Key for new user" 2
     op_log "Creating SSH Key for new user" "SUCCESSFUL"
 else
+    file_log "Creating SSH Key for new user failed."
+    update_event_status "Creating SSH Key for new user" 3
     op_log "Creating SSH Key for new user" "FAILED"
+    finally "Creating SSH Key for new user"
     exit 1;
 fi
 
@@ -511,32 +636,39 @@ fi
 # Secure authorized_keys file
 ##############################################################
 
+reset_op_code
+update_event_status "Securing 'authorized_keys' file" 1
 op_log "Securing 'authorized_keys' file"
 {
     # Set appropriate permissions for ".ssh" dir and "authorized_key" file
     chown -R "$NORM_USER_NAME" "$SSH_DIR" && \
-        chgrp -R "$NORM_USER_NAME" "$SSH_DIR" && \
-        chmod 700 "$SSH_DIR" && \
-        chmod 400 "$SSH_DIR"/authorized_keys && \
-        chattr +i "$SSH_DIR"/authorized_keys || false
+    chgrp -R "$NORM_USER_NAME" "$SSH_DIR" && \
+    chmod 700 "$SSH_DIR" && \
+    chmod 400 "$SSH_DIR"/authorized_keys && \
+    chattr +i "$SSH_DIR"/authorized_keys
+    set_op_code $?
     file_log "Set appropriate permissions for $SSH_DIR dir and $SSH_DIR/authorized_keys file"
 
     # Restrict access to the generated SSH Key files as well
     for key in "${KEY_FILES[@]}"; do
         chmod 400 "$key" && \
         chattr +i "$key"
+        set_op_code $?
     done
     file_log "Restrict access to the generated SSH Key files"
     
 } 2>> "$LOGFILE" >&2
 
-if [[ $? -eq 0 ]]; then
+if [[ $OP_CODE -eq 0 ]]; then
+    update_event_status "Securing 'authorized_keys' file" 2
     op_log "Securing 'authorized_keys' file" "SUCCESSFUL"
 else
     file_log "Setting restrictive permissions for '~/.ssh/' directory failed"
     file_log "Please do 'ls -lAh ~/.ssh/' and check manually to see what went wrong."
-    file_log "Rest of the tasks will continue."
+    update_event_status "Securing 'authorized_keys' file" 3
     op_log "Securing 'authorized_keys' file" "FAILED"
+    finally "Securing 'authorized_keys' file"
+    exit 1
 fi
 
 
@@ -620,31 +752,41 @@ function set_config_key(){
     fi
 }
 
+reset_op_code
+update_event_status "Enabling SSH-only login" 1
 op_log "Enabling SSH-only login"
 {
     # Backup the sshd_config file
-    cp /etc/ssh/sshd_config /etc/ssh/sshd_config"$BACKUP_EXTENSION" || false
+    cp /etc/ssh/sshd_config /etc/ssh/sshd_config"$BACKUP_EXTENSION"
+    set_op_code $?
     file_log "Backed up /etc/ssh/sshd_config file to /etc/ssh/sshd_config$BACKUP_EXTENSION"
 
     # Remove root login
-    set_config_key "/etc/ssh/sshd_config" "PermitRootLogin" "no" || false
+    set_config_key "/etc/ssh/sshd_config" "PermitRootLogin" "no"
+    set_op_code $?
     file_log "Remove root login -> PermitRootLogin no"
 
     # Disable password login
-    set_config_key "/etc/ssh/sshd_config" "PasswordAuthentication" "no" || false
+    set_config_key "/etc/ssh/sshd_config" "PasswordAuthentication" "no"
+    set_op_code $?
     file_log "Disable password login -> PasswordAuthentication no"
 
     # Set SSH Authorization-Keys path
-    set_config_key "/etc/ssh/sshd_config" "AuthorizedKeysFile" '%h\/\.ssh\/authorized_keys' || false
+    set_config_key "/etc/ssh/sshd_config" "AuthorizedKeysFile" '%h\/\.ssh\/authorized_keys'
+    set_op_code $?
     file_log "Set SSH Authorization-Keys path -> AuthorizedKeysFile '%h\/\.ssh\/authorized_keys'"
 
     systemctl restart sshd
 } 2>> "$LOGFILE" >&2
 
-if [[ $? -eq 0 ]]; then
+if [[ $OP_CODE -eq 0 ]]; then
+    update_event_status "Enabling SSH-only login" 2
     op_log "Enabling SSH-only login" "SUCCESSFUL"
 else
+    file_log "Enabling SSH-only login failed."
+    update_event_status "Enabling SSH-only login" 3
     op_log "Enabling SSH-only login" "FAILED"
+    finally "Enabling SSH-only login"
     exit 1;
 fi
 
@@ -709,14 +851,21 @@ fi
 # Install required softwares
 ##############################################################
 
+reset_op_code
+update_event_status "Installing required softwares" 1
 op_log "Installing required softwares"
 {
-    apt-get update && apt-get upgrade -y && apt-get install -y sudo curl screen
+    apt-get update
+    apt-get upgrade -y
+    apt-get install -y sudo curl screen
+    set_op_code $?
 } 2>> "$LOGFILE" >&2
 
-if [[ $? -eq 0 ]]; then
-    op_log "Installing required softwares" "FAILED"
+if [[ $OP_CODE -eq 0 ]]; then
+    update_event_status "Installing required softwares" 2
+    op_log "Installing required softwares" "SUCCESSFUL"
 else
+    update_event_status "Installing required softwares" 3
     op_log "Installing required softwares" "FAILED"
 fi
 
@@ -726,22 +875,31 @@ fi
 ##############################################################
 
 if [[ $RESET_ROOT_PWD == 'y' ]]; then
+
+    reset_op_code
+    update_event_status "Changing root password" 1
     op_log "Changing root password"
     {
         # Generate a 15 character random password
-        PASS_ROOT="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)" || false
+        PASS_ROOT="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
+        set_op_code $?
 
         file_log "Generated Root Password - ${PASS_ROOT}"
 
         # Change root's password
-        echo -e "${PASS_ROOT}\\n${PASS_ROOT}" | passwd 
+        false
+        #echo -e "${PASS_ROOT}\\n${PASS_ROOT}" | passwd
+        set_op_code $?
     } 2>> "$LOGFILE" >&2
 
-    if [[ $? -eq 0 ]]; then
+    if [[ $OP_CODE -eq 0 ]]; then
+        update_event_status "Changing root password" 2
         op_log "Changing root password" "SUCCESSFUL"
     else
         # Low priority - since we are disabling root login anyways
+        update_event_status "Changing root password" 3
         op_log "Changing root password" "FAILED"
+        revert_root_pass_change
     fi
 fi
 
