@@ -12,9 +12,7 @@
     # OVH
     # Hetzner
 
-# TODO - Keep all the event names in an array 
-    # - so easy to see all the steps
-    # Easy to change step name and order
+# TODO - Deal with multiple backup files during restoration
 
 SCRIPT_NAME=server_harden
 SCRIPT_VERSION=0.2
@@ -199,6 +197,8 @@ SecureAuthkeysfile=0
 EnableSSHOnly=0
 ChangeSourceList=0
 InstallReqSoftwares=0
+ConfigureUFW=0
+ConfigureFail2Ban=0
 ChangeRootPwd=0
 
 function set_op_code() {
@@ -213,25 +213,31 @@ function reset_op_code(){
 
 function get_event_var_from_event() {
     case $1 in
-        "Creating new user")
+        "${OP_TEXT[0]}")
             echo "CreateNonRootUser"
             ;;
-        "Creating SSH Key for new user")
+        "${OP_TEXT[1]}")
             echo "CreateSSHKey"
             ;;
-        "Securing 'authorized_keys' file")
+        "${OP_TEXT[2]}")
             echo "SecureAuthkeysfile"
             ;;
-        "Enabling SSH-only login")
+        "${OP_TEXT[3]}")
             echo "EnableSSHOnly"
             ;;
-        "Changing urls in sources.list to defaults")
+        "${OP_TEXT[4]}")
             echo "ChangeSourceList"
             ;;
-        "Installing required softwares")
+        "${OP_TEXT[5]}")
             echo "InstallReqSoftwares"
             ;;
-        "Changing root password")
+        "${OP_TEXT[6]}")
+            echo "ConfigureUFW"
+            ;;
+        "${OP_TEXT[7]}")
+            echo "ConfigureFail2Ban"
+            ;;
+        "${OP_TEXT[8]}")
             echo "ChangeRootPwd"
             ;;
         *)
@@ -254,23 +260,21 @@ function get_event_status() {
 function revert_changes(){
     file_log "Starting revert operation..."
 
-    if [[ $1 = "Creating new user" ]]; then
+    if [[ $1 = "${OP_TEXT[0]}" ]]; then
         revert_create_user
-    elif [[ $1 = "Creating SSH Key for new user" ]]; then
+    elif [[ $1 = "${OP_TEXT[1]}" ]]; then
         revert_create_ssh_key
-    elif [[ $1 = "Securing 'authorized_keys' file" ]]; then
+    elif [[ $1 = "${OP_TEXT[2]}" ]]; then
         revert_secure_authorized_key
-    elif [[ $1 = "Enabling SSH-only login" ]]; then
+    elif [[ $1 = "${OP_TEXT[3]}" ]]; then
         revert_ssh_only_login
-    elif [[ $1 = "Changing urls in sources.list to defaults" ]]; then
+    elif [[ $1 = "${OP_TEXT[4]}" ]]; then
         # This can be reverted back individually
         revert_source_list_changes
-    elif [[ $1 = "Installing required softwares" ]]; then
+    elif [[ $1 = "${OP_TEXT[5]}" ]]; then
         # This can be reverted back individually
         return 7
     fi
-
-    file_log "Revert operation completed"
 }
 
 function error_restoring(){
@@ -403,6 +407,47 @@ function revert_root_pass_change(){
     echo
     center_err_text "Changing root password failed..."
     center_err_text "Your earlier root password remains VALID"
+}
+
+function revert_config_UFW(){
+    local success;
+    file_log "Reverting UFW Configuration..."
+
+    ufw disable
+    success=$?
+
+    if [[ $success -eq 0 ]]; then
+        op_log "Reverting - UFW Configuration" "SUCCESSFUL"
+        file_log "Reverting UFW Configuration - Completed"
+    else
+        error_restoring "Reverting - UFW Configuration"
+    fi
+}
+
+function revert_config_fail2ban(){
+    local success;
+
+    revert_secure_authorized_key
+    file_log "Reverting Fail2ban Config..."
+
+    if [[ -f /etc/fail2ban/jail.local"$BACKUP_EXTENSION" ]]; then
+        unalias cp &>/dev/null
+        cp -rf /etc/fail2ban/jail.local"$BACKUP_EXTENSION" /etc/fail2ban/jail.local 2>> "$LOGFILE" >&2
+        success=$?
+    fi
+
+    if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" ]]; then
+        unalias cp &>/dev/null
+        cp -rf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" /etc/fail2ban/jail.d/defaults-debian.conf 2>> "$LOGFILE" >&2
+        success=$?
+    fi
+
+    if [[ $success -eq 0 ]]; then
+        op_log "Reverting - Fail2ban Config" "SUCCESSFUL"
+        file_log "Reverting Fail2ban Config - Completed"
+    else
+        error_restoring "Reverting - Fail2ban Config"
+    fi
 }
 
 revert_software_installs(){
@@ -578,14 +623,25 @@ function recap_file_content(){
     printf "${CEND}"
 }
 
+OP_TEXT=(
+    "Creating new user" #0
+    "Creating SSH Key for new user" #1
+    "Securing 'authorized_keys' file" #2
+    "Enabling SSH-only login" #3
+    "Changing urls in sources.list to defaults" #4
+    "Installing required softwares" #5
+    "Configure UFW" #6
+    "Configure Fail2Ban" #7
+    "Changing root password" #8
+)
 
 ##############################################################
 # Create non-root user
 ##############################################################
 
 reset_op_code
-update_event_status "Creating new user" 1
-op_log "Creating new user"
+update_event_status "${OP_TEXT[0]}" 1
+op_log "${OP_TEXT[0]}"
 {
     if [[ $AUTO_GEN_USERNAME == 'y' ]]; then
         NORM_USER_NAME="$(< /dev/urandom tr -cd 'a-z' | head -c 6)""$(< /dev/urandom tr -cd '0-9' | head -c 2)" || exit 1
@@ -606,12 +662,12 @@ op_log "Creating new user"
 } 2>> "$LOGFILE" >&2
 
 if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "Creating new user" 2
-    op_log "Creating new user" "SUCCESSFUL"
+    update_event_status "${OP_TEXT[0]}" 2
+    op_log "${OP_TEXT[0]}" "SUCCESSFUL"
 else
-    update_event_status "Creating new user" 3
-    op_log "Creating new user" "FAILED"
-    finally "Creating new user"
+    update_event_status "${OP_TEXT[0]}" 3
+    op_log "${OP_TEXT[0]}" "FAILED"
+    finally "${OP_TEXT[0]}"
     exit 1;
 fi
 
@@ -621,8 +677,8 @@ fi
 ##############################################################
 
 reset_op_code
-update_event_status "Creating SSH Key for new user" 1
-op_log "Creating SSH Key for new user"
+update_event_status "${OP_TEXT[1]}" 1
+op_log "${OP_TEXT[1]}"
 {
     shopt -s nullglob
     # TODO - Below would capture bak files as well - filter out the bak files
@@ -667,13 +723,13 @@ op_log "Creating SSH Key for new user"
 } 2>> "$LOGFILE" >&2
 
 if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "Creating SSH Key for new user" 2
-    op_log "Creating SSH Key for new user" "SUCCESSFUL"
+    update_event_status "${OP_TEXT[1]}" 2
+    op_log "${OP_TEXT[1]}" "SUCCESSFUL"
 else
     file_log "Creating SSH Key for new user failed."
-    update_event_status "Creating SSH Key for new user" 3
-    op_log "Creating SSH Key for new user" "FAILED"
-    finally "Creating SSH Key for new user"
+    update_event_status "${OP_TEXT[1]}" 3
+    op_log "${OP_TEXT[1]}" "FAILED"
+    finally "${OP_TEXT[1]}"
     exit 1;
 fi
 
@@ -683,8 +739,8 @@ fi
 ##############################################################
 
 reset_op_code
-update_event_status "Securing 'authorized_keys' file" 1
-op_log "Securing 'authorized_keys' file"
+update_event_status "${OP_TEXT[2]}" 1
+op_log "${OP_TEXT[2]}"
 {
     # Set appropriate permissions for ".ssh" dir and "authorized_key" file
     chown -R "$NORM_USER_NAME" "$SSH_DIR" && \
@@ -706,14 +762,14 @@ op_log "Securing 'authorized_keys' file"
 } 2>> "$LOGFILE" >&2
 
 if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "Securing 'authorized_keys' file" 2
-    op_log "Securing 'authorized_keys' file" "SUCCESSFUL"
+    update_event_status "${OP_TEXT[2]}" 2
+    op_log "${OP_TEXT[2]}" "SUCCESSFUL"
 else
     file_log "Setting restrictive permissions for '~/.ssh/' directory failed"
     file_log "Please do 'ls -lAh ~/.ssh/' and check manually to see what went wrong."
-    update_event_status "Securing 'authorized_keys' file" 3
-    op_log "Securing 'authorized_keys' file" "FAILED"
-    finally "Securing 'authorized_keys' file"
+    update_event_status "${OP_TEXT[2]}" 3
+    op_log "${OP_TEXT[2]}" "FAILED"
+    finally "${OP_TEXT[2]}"
     exit 1
 fi
 
@@ -799,8 +855,8 @@ function set_config_key(){
 }
 
 reset_op_code
-update_event_status "Enabling SSH-only login" 1
-op_log "Enabling SSH-only login"
+update_event_status "${OP_TEXT[3]}" 1
+op_log "${OP_TEXT[3]}"
 {
     # Backup the sshd_config file
     cp /etc/ssh/sshd_config /etc/ssh/sshd_config"$BACKUP_EXTENSION"
@@ -826,13 +882,13 @@ op_log "Enabling SSH-only login"
 } 2>> "$LOGFILE" >&2
 
 if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "Enabling SSH-only login" 2
-    op_log "Enabling SSH-only login" "SUCCESSFUL"
+    update_event_status "${OP_TEXT[3]}" 2
+    op_log "${OP_TEXT[3]}" "SUCCESSFUL"
 else
     file_log "Enabling SSH-only login failed."
-    update_event_status "Enabling SSH-only login" 3
-    op_log "Enabling SSH-only login" "FAILED"
-    finally "Enabling SSH-only login"
+    update_event_status "${OP_TEXT[3]}" 3
+    op_log "${OP_TEXT[3]}" "FAILED"
+    finally "${OP_TEXT[3]}"
     exit 1;
 fi
 
@@ -914,6 +970,92 @@ else
     update_event_status "Installing required softwares" 3
     op_log "Installing required softwares" "FAILED"
     revert_software_installs
+fi
+
+
+##############################################################
+# Configure UFW
+##############################################################
+
+# If install software failed - do not proceed
+if [[ $InstallReqSoftwares -eq 2 ]]; then
+    reset_op_code
+    update_event_status "${OP_TEXT[6]}" 1
+    op_log "${OP_TEXT[6]}"
+    {
+        ufw allow ssh && ufw allow http && ufw allow https && ufw enable
+        set_op_code $?
+    } 2>> "$LOGFILE" >&2
+
+    if [[ $OP_CODE -eq 0 ]]; then
+        update_event_status "${OP_TEXT[6]}" 2
+        op_log "${OP_TEXT[6]}" "SUCCESSFUL"
+    else
+        update_event_status "${OP_TEXT[6]}" 3
+        op_log "${OP_TEXT[6]}" "FAILED"
+        revert_config_UFW
+        # TODO - Revert Configure UFW
+    fi
+fi
+
+
+##############################################################
+# Configure Fail2Ban
+##############################################################
+
+# If install software failed - do not proceed
+if [[ $InstallReqSoftwares -eq 2 ]]; then
+    reset_op_code
+    update_event_status "${OP_TEXT[7]}" 1
+    op_log "${OP_TEXT[7]}"
+    {
+        if [[ -f /etc/fail2ban/jail.local ]]; then
+            cp /etc/fail2ban/jail.local /etc/fail2ban/jail.local"$BACKUP_EXTENSION"
+        fi
+
+        cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+        set_op_code $?
+        # TODO - 1st instance - that appear below [DEFAULT]
+            # Delete all commented lines until 1st uncommented line is encountered
+            # ignoreip = 127.0.0.1/8 ::1 <ServersPublicIP>
+            # bantime = 10800
+            # backend = polling
+            #
+        # TODO - Below - make it usable for Ubuntu as well
+        cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
+        
+cat <<FAIL2BAN > /etc/fail2ban/jail.d/defaults-debian.conf
+[sshd]
+enabled = true
+maxretry = 3
+bantime = 2592000
+
+[sshd-ddos]
+enabled = true
+maxretry = 5
+bantime = 2592000
+
+[recidive]
+enabled = true
+bantime  = 31536000             ; 1 year
+findtime = 86400                ; 1 days
+maxretry = 10
+FAIL2BAN
+
+        set_op_code $?
+
+        systemctl restart fail2ban
+        set_op_code $?
+    } 2>> "$LOGFILE" >&2
+
+    if [[ $OP_CODE -eq 0 ]]; then
+        update_event_status "${OP_TEXT[7]}" 2
+        op_log "${OP_TEXT[7]}" "SUCCESSFUL"
+    else
+        update_event_status "${OP_TEXT[7]}" 3
+        op_log "${OP_TEXT[7]}" "FAILED"
+        # TODO - Revert Configure Fail2Ban
+    fi
 fi
 
 
