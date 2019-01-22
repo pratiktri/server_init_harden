@@ -11,7 +11,8 @@
     # OVH
     # Hetzner
 
-
+# TODO - fail2ban does not work on Ubuntu 14.04 => does NOT read the defaults-debian.conf file
+    # => Check what makes debian read it => something in fail2ban.conf file
 
 SCRIPT_NAME=server_harden
 SCRIPT_VERSION=0.2
@@ -187,6 +188,7 @@ cat <<INFORM | more
   then those credentials will be displayed at the end of all operations.
 - If script reports any error or something does not work as expected,
   please take a look at the log file at (${LOGFILE}).
+- Operations are NOT idempotent
 
 All backup files have extension (${BACKUP_EXTENSION})
 Script logs all operation into (${LOGFILE}) file.
@@ -346,7 +348,7 @@ function revert_create_user(){
     fi
 
     if [[ $success -eq 0 ]]; then
-        op_log "Reverting - New User Creation" "SUCCESSFUL"
+        op_rev_log "Reverting - New User Creation" "SUCCESSFUL"
         file_log "Reverting New User Creation - Completed"
     else
         error_restoring "Reverting - New User Creation"
@@ -370,7 +372,7 @@ function revert_create_ssh_key(){
     fi
 
     if [[ $success -eq 0 ]]; then
-        op_log "Reverting - SSH Key Generation" "SUCCESSFUL"
+        op_rev_log "Reverting - SSH Key Generation" "SUCCESSFUL"
         file_log "Reverting SSH Key Generation - Completed"
     else
         error_restoring "Reverting - SSH Key Generation"
@@ -396,7 +398,7 @@ function revert_secure_authorized_key(){
     fi
 
     if [[ $success -eq 0 ]]; then
-        op_log "Reverting - SSH Key Authorization" "SUCCESSFUL"
+        op_rev_log "Reverting - SSH Key Authorization" "SUCCESSFUL"
         file_log "Reverting SSH Key Authorization - Completed"
     else
         error_restoring "Reverting - SSH Key Authorization"
@@ -416,7 +418,7 @@ function revert_ssh_only_login(){
     fi
 
     if [[ $success -eq 0 ]]; then
-        op_log "Reverting - SSH-only Login" "SUCCESSFUL"
+        op_rev_log "Reverting - SSH-only Login" "SUCCESSFUL"
         file_log "Reverting SSH-only Login - Completed"
     else
         error_restoring "Reverting - SSH-only Login"
@@ -443,7 +445,7 @@ function revert_source_list_changes(){
     fi
 
     if [[ $success -eq 0 ]]; then
-        op_log "Reverting - Source_list Changes" "SUCCESSFUL"
+        op_rev_log "Reverting - Source_list Changes" "SUCCESSFUL"
         file_log "Reverting Source_list Changes - Completed"
     else
         error_restoring "Reverting - Source_list Changes"
@@ -464,7 +466,7 @@ function revert_config_UFW(){
     success=$?
 
     if [[ $success -eq 0 ]]; then
-        op_log "Reverting - UFW Configuration" "SUCCESSFUL"
+        op_rev_log "Reverting - UFW Configuration" "SUCCESSFUL"
         file_log "Reverting UFW Configuration - Completed"
     else
         error_restoring "Reverting - UFW Configuration"
@@ -495,7 +497,7 @@ function revert_config_fail2ban(){
     fi
 
     if [[ $success -eq 0 ]]; then
-        op_log "Reverting - Fail2ban Config" "SUCCESSFUL"
+        op_rev_log "Reverting - Fail2ban Config" "SUCCESSFUL"
         file_log "Reverting Fail2ban Config - Completed"
     else
         error_restoring "Reverting - Fail2ban Config"
@@ -636,6 +638,12 @@ function op_log() {
         printf "%33s %7s [${CRED}..${CEND}]" "$EVENT" " "
         file_log "${EVENT} - begin..."
     fi
+}
+
+function op_rev_log(){
+    printf "${CRED}"
+    op_log "$1" "$2"
+    printf "${CEND}"
 }
 
 function recap (){
@@ -929,7 +937,13 @@ op_log "${OP_TEXT[3]}"
     set_op_code $?
     file_log "Set SSH Authorization-Keys path -> AuthorizedKeysFile '%h\/\.ssh\/authorized_keys'"
 
-    systemctl restart sshd
+    { 
+        service sshd restart 2>> "$LOGFILE" >&2
+        } || { 
+                # Because Ubuntu 14.04 does not have sshd
+                service ssh restart 2>> "$LOGFILE" >&2
+            }
+    set_op_code $?
 } 2>> "$LOGFILE" >&2
 
 if [[ $OP_CODE -eq 0 ]]; then
@@ -1036,7 +1050,7 @@ op_log "${OP_TEXT[5]}"
 {
     apt-get update
     apt-get upgrade -y
-    apt-get install -y sudo systemd curl screen ufw fail2ban
+    apt-get install -y sudo curl screen ufw fail2ban
     set_op_code $?
 } 2>> "$LOGFILE" >&2
 
@@ -1116,8 +1130,9 @@ if [[ $InstallReqSoftwares -eq 2 ]]; then
         sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
         sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
 
-        # TODO - Below - make it usable for Ubuntu as well
-        cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
+        if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf ]]; then
+            cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
+        fi
         
 cat <<FAIL2BAN > /etc/fail2ban/jail.d/defaults-debian.conf
 [sshd]
@@ -1139,7 +1154,7 @@ FAIL2BAN
 
         set_op_code $?
 
-        systemctl restart fail2ban
+        service fail2ban start
         set_op_code $?
     } 2>> "$LOGFILE" >&2
 
