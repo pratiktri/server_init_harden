@@ -1,7 +1,6 @@
 #!/etc/bin/env bash
 
 # What to do if making .bkp file fails?
-    # Add timestamp` to all backup files filename.071218_171731_bak
 #Test
     # 1 - Deb 9.x
     # 2 - Deb 8.x
@@ -12,7 +11,7 @@
     # OVH
     # Hetzner
 
-# TODO - Deal with multiple backup files during restoration
+
 
 SCRIPT_NAME=server_harden
 SCRIPT_VERSION=0.2
@@ -33,8 +32,9 @@ CGREEN="${CSI}1;32m"
 # Usage
 ##############################################################
 # Script takes arguments as follows
-# init-linux-harden -username=pratik --resetrootpwd
+# init-linux-harden -username pratik --resetrootpwd
 # init-linux-harden -u pratik --resetrootpwd
+# init-linux-harden -username pratik --resetrootpwd -q
 
 function usage() {
     if [ -n "$1" ]; then
@@ -436,6 +436,12 @@ function revert_config_fail2ban(){
         success=$?
     fi
 
+    if [[ -f /etc/fail2ban/jail.conf"$BACKUP_EXTENSION" ]]; then
+        #Because we created this file when no .local file exists
+        rm /etc/fail2ban/jail.conf"$BACKUP_EXTENSION"
+        success=$?
+    fi
+
     if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" ]]; then
         unalias cp &>/dev/null
         cp -rf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" /etc/fail2ban/jail.d/defaults-debian.conf 2>> "$LOGFILE" >&2
@@ -778,6 +784,7 @@ fi
 # Enable SSH-only login
 ##############################################################
 
+# TODO - Replace this horror with sed
 function config_search_regex(){
     local search_key=$1
     declare -i isCommented=$2
@@ -818,7 +825,7 @@ function set_config_key(){
     fi
 
     # If Config file already has active keys
-    #  Keep only the LAST correct one and comment out the rest
+    # Keep only the LAST correct one and comment out the rest
     if [[ $(grep -Pnc "$ACTIVE_KEYS_REGEX" "$file_location") -gt 0 ]]; 
     then
         # Last correct active entry's line number
@@ -954,21 +961,21 @@ fi
 ##############################################################
 
 reset_op_code
-update_event_status "Installing required softwares" 1
-op_log "Installing required softwares"
+update_event_status "${OP_TEXT[5]}" 1
+op_log "${OP_TEXT[5]}"
 {
     apt-get update
     apt-get upgrade -y
-    apt-get install -y sudo curl screen
+    apt-get install -y sudo curl screen ufw fail2ban
     set_op_code $?
 } 2>> "$LOGFILE" >&2
 
 if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "Installing required softwares" 2
-    op_log "Installing required softwares" "SUCCESSFUL"
+    update_event_status "${OP_TEXT[5]}" 2
+    op_log "${OP_TEXT[5]}" "SUCCESSFUL"
 else
-    update_event_status "Installing required softwares" 3
-    op_log "Installing required softwares" "FAILED"
+    update_event_status "${OP_TEXT[5]}" 3
+    op_log "${OP_TEXT[5]}" "FAILED"
     revert_software_installs
 fi
 
@@ -994,7 +1001,6 @@ if [[ $InstallReqSoftwares -eq 2 ]]; then
         update_event_status "${OP_TEXT[6]}" 3
         op_log "${OP_TEXT[6]}" "FAILED"
         revert_config_UFW
-        # TODO - Revert Configure UFW
     fi
 fi
 
@@ -1011,16 +1017,25 @@ if [[ $InstallReqSoftwares -eq 2 ]]; then
     {
         if [[ -f /etc/fail2ban/jail.local ]]; then
             cp /etc/fail2ban/jail.local /etc/fail2ban/jail.local"$BACKUP_EXTENSION"
+        else
+            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+            set_op_code $?
+            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.conf"$BACKUP_EXTENSION"
         fi
 
-        cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-        set_op_code $?
-        # TODO - 1st instance - that appear below [DEFAULT]
-            # Delete all commented lines until 1st uncommented line is encountered
-            # ignoreip = 127.0.0.1/8 ::1 <ServersPublicIP>
-            # bantime = 10800
-            # backend = polling
-            #
+        # startline & endline - restrict the search to [DEFAULT] section
+        startline=$(grep -Pnxm 1 "(^ *)\[DEFAULT\]" /etc/fail2ban/jail.local | cut -d: -f 1)
+        endline=$(grep -Pnxm 1 "(^ *)\[sshd\]" /etc/fail2ban/jail.local | cut -d: -f 1)
+        pub_ip=$(curl https://ipinfo.io/ip 2>> /dev/null) 
+
+        # TODO - Exception handle 
+            # - No [DEFAULT] section present
+            # - no "bantime" or "backend" or "ignoreip" - options present
+            # But that is NOT very important - cause fail2ban defaults are sane anyways
+        sed -ri "$startline,$endline s/^bantime = .*/bantime = 18000/" /etc/fail2ban/jail.local
+        sed -ri "$startline,$endline s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
+        sed -ri "$startline,$endline s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
+
         # TODO - Below - make it usable for Ubuntu as well
         cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
         
@@ -1054,7 +1069,7 @@ FAIL2BAN
     else
         update_event_status "${OP_TEXT[7]}" 3
         op_log "${OP_TEXT[7]}" "FAILED"
-        # TODO - Revert Configure Fail2Ban
+        revert_config_fail2ban
     fi
 fi
 
@@ -1066,8 +1081,8 @@ fi
 if [[ $RESET_ROOT_PWD == 'y' ]]; then
 
     reset_op_code
-    update_event_status "Changing root password" 1
-    op_log "Changing root password"
+    update_event_status "${OP_TEXT[8]}" 1
+    op_log "${OP_TEXT[8]}"
     {
         # Generate a 15 character random password
         PASS_ROOT="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
@@ -1081,12 +1096,12 @@ if [[ $RESET_ROOT_PWD == 'y' ]]; then
     } 2>> "$LOGFILE" >&2
 
     if [[ $OP_CODE -eq 0 ]]; then
-        update_event_status "Changing root password" 2
-        op_log "Changing root password" "SUCCESSFUL"
+        update_event_status "${OP_TEXT[8]}" 2
+        op_log "${OP_TEXT[8]}" "SUCCESSFUL"
     else
         # Low priority - since we are disabling root login anyways
-        update_event_status "Changing root password" 3
-        op_log "Changing root password" "FAILED"
+        update_event_status "${OP_TEXT[8]}" 3
+        op_log "${OP_TEXT[8]}" "FAILED"
         revert_root_pass_change
     fi
 fi
