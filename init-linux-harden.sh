@@ -66,15 +66,53 @@ function usage() {
 }
 
 # Check supported OSes
-if [[ $(cut -d. -f 1 < /etc/debian_version) -eq 8 ]]; then
-    DEB_VER_STR="jessie"
-elif [[ $(cut -d. -f 1 < /etc/debian_version) -eq 9 ]]; then
-    DEB_VER_STR="stretch"
+if [ -f /etc/os-release ]; then
+    # freedesktop.org and systemd
+    . /etc/os-release
+    OS=$ID
+    VER=$VERSION_ID
 else
-    printf "This script only supports Debian Stretch (9.x) and Debian Jessie (8.x).\\n"
-    printf "Your OS is NOT supported.\\n"
-    exit 1
+    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+    OS=$(uname -s)
+    VER=$(uname -r)
 fi
+
+case "$OS" in
+    debian)
+        if [[ "$VER" -eq 8 ]]; then
+            DEB_VER_STR="jessie"
+        elif [[ "$VER" -eq 9 ]]; then
+            DEB_VER_STR="stretch"
+        else
+            printf "This script only supports Debian 8 and Debian 9\\n"
+            printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10\\n"
+            printf "Your OS is NOT supported.\\n"
+            exit 1
+        fi
+        ;;
+    ubuntu)
+        if [[ "$VER" = "14.04" ]]; then
+            UBT_VER_STR="trusty"
+        elif [[ "$VER" = "16.04" ]]; then
+            UBT_VER_STR="xenial"
+        elif [[ "$VER" = "18.04" ]]; then
+            UBT_VER_STR="bionic"
+        elif [[ "$VER" = "18.10" ]]; then
+            UBT_VER_STR="cosmic"
+        else
+            printf "This script only supports Debian 8 and Debian 9\\n"
+            printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10\\n"
+            printf "Your OS is NOT supported.\\n"
+            exit 1
+        fi
+        ;;
+    *)
+        printf "This script only supports Debian 8 and Debian 9\\n"
+        printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10\\n"
+        printf "Your OS is NOT supported.\\n"
+        exit 1
+        ;;
+esac
 
 
 ##################################
@@ -153,6 +191,8 @@ cat <<INFORM | more
 All backup files have extension (${BACKUP_EXTENSION})
 Script logs all operation into (${LOGFILE}) file.
 
+##################################################################
+
 INFORM
 
 echo "Installation options selected - " | tee -a "$LOGFILE"
@@ -171,12 +211,14 @@ if [[ "$QUIET" == "y" ]]; then
     printf "%3s No prompt installtion selected\\n\\n" " -" | tee -a "$LOGFILE"
 fi
 
+echo
 echo "TO CONTINUE (press enter/return)..."
 echo "TO EXIT (ctrl + c)..."
 echo
 
 if [[ $QUIET == "n" ]]; then
     read -r
+    clear
 fi
 
 
@@ -294,7 +336,12 @@ function revert_create_user(){
 
     # Remove user and its home directory only if user was created
     if [[ $(getent passwd "$NORM_USER_NAME" | wc -l) -gt 0 ]]; then
-        deluser --remove-home "$NORM_USER_NAME" 2>> "$LOGFILE" >&2
+        {
+            deluser "$NORM_USER_NAME"
+            chattr -i /home/"$NORM_USER_NAME"/.ssh/*
+            rm -rf /home/"${NORM_USER_NAME:?}"
+            success=$?
+        } 2>> "$LOGFILE" >&2
         success=$?
     fi
 
@@ -427,7 +474,6 @@ function revert_config_UFW(){
 function revert_config_fail2ban(){
     local success;
 
-    revert_secure_authorized_key
     file_log "Reverting Fail2ban Config..."
 
     if [[ -f /etc/fail2ban/jail.local"$BACKUP_EXTENSION" ]]; then
@@ -458,8 +504,8 @@ function revert_config_fail2ban(){
 
 revert_software_installs(){
     echo
-    center_err_text "Installing software failed..."
-    center_err_text "This is NOT a catastrophic error"
+    file_log "Installing software failed..."
+    file_log "This is NOT a catastrophic error"
 }
 
 function finally(){
@@ -521,12 +567,10 @@ function finally(){
     if [[ $ChangeSourceList -eq 3 ]] ||
        [[ $InstallReqSoftwares -eq 3 ]] ||
        [[ $ChangeRootPwd -eq 3 ]]; then
-        echo
         center_err_text "Some operations failed..."
         center_err_text "These may NOT be catastrophic"
         center_err_text "Please look at $LOGFILE for details"
         revert_changes "$1"
-        echo 
         echo
     fi
 }
@@ -543,7 +587,7 @@ CLINESIZE=72
 function center_text(){
   textsize=${#1}
   width=$2
-  span=$((("$width" + "$textsize") / 2))
+  span=$((($width + $textsize) / 2))
   printf "%${span}s" "$1"
 }
 
@@ -579,15 +623,15 @@ function op_log() {
     local EVENT=$1
     local RESULT=$2
 
-    if [ "$RESULT" = "SUCCESSFUL" ]
-    then
+    if [[ "$RESULT" = "SUCCESSFUL" ]]; then
         printf "\r%33s %7s [${CGREEN}${RESULT}${CEND}]\\n" "$EVENT" " "
         file_log "${EVENT} - ${RESULT}"
-    elif [ "$RESULT" = "FAILED" ] 
-    then
+    elif [[ "$RESULT" = "FAILED" ]]; then
         printf "\r%33s %7s [${CRED}${RESULT}${CEND}]\\n" "$EVENT" " "
         file_log "${EVENT} - ${RESULT}"
-
+    elif [[ "$RESULT" = "NO-OP" ]]; then
+        printf "\r%33s %7s [${RESULT}]\\n" "$EVENT" " "
+        file_log "${EVENT} - No operation done. Check above for details..."
     else
         printf "%33s %7s [${CRED}..${CEND}]" "$EVENT" " "
         file_log "${EVENT} - begin..."
@@ -634,7 +678,7 @@ OP_TEXT=(
     "Creating SSH Key for new user" #1
     "Securing 'authorized_keys' file" #2
     "Enabling SSH-only login" #3
-    "Changing urls in sources.list to defaults" #4
+    "Reset sources.list to defaults" #4
     "Installing required softwares" #5
     "Configure UFW" #6
     "Configure Fail2Ban" #7
@@ -715,7 +759,7 @@ op_log "${OP_TEXT[1]}"
     file_log "Generated SSH Key File - $SSH_DIR/$NORM_USER_NAME.pem"
 
     # Copy the generated public file to authorized_keys
-    echo "$SSH_DIR"/"$NORM_USER_NAME".pem.pub >> "$SSH_DIR"/authorized_keys
+    cat "$SSH_DIR"/"$NORM_USER_NAME".pem.pub >> "$SSH_DIR"/authorized_keys
     set_op_code $?
 
     # TODO - Below would capture bak files as well - filter out the bak files
@@ -818,13 +862,13 @@ function set_config_key(){
     ACTIVE_CORRECT_KEYS_REGEX=$(config_search_regex "$key" "1" "$value")
     INACTIVE_KEYS_REGEX=$(config_search_regex "$key" "2")
 
-    # If no keys present - insert the correct key to the end of the file
+    # If no keys present - insert the correct configuration to the end of the file
     if [[ $(grep -Pnc "$INACTIVE_KEYS_REGEX" "$file_location") -eq 0 ]] && [[ $(grep -Pnc "$ACTIVE_KEYS_REGEX" "$file_location") -eq 0 ]];
     then
         echo "$key" "$value" >> "$file_location"
     fi
 
-    # If Config file already has active keys
+    # If Config file already has correct configuration
     # Keep only the LAST correct one and comment out the rest
     if [[ $(grep -Pnc "$ACTIVE_KEYS_REGEX" "$file_location") -gt 0 ]]; 
     then
@@ -847,16 +891,16 @@ function set_config_key(){
         done
     fi
 
-    # If Config file has inactive keys and NO active keys 
-    # Append the appropriate key below the LAST inactive key
+    # If Config file has commented configuration and NO active configuration 
+    # Append the appropriate configuration below the LAST commented configuration
     if [[ $(grep -Pnc "$INACTIVE_KEYS_REGEX" "$file_location") -gt 0 ]] && [[ $(grep -Pnc "$ACTIVE_KEYS_REGEX" "$file_location") -eq 0 ]]; 
     then
-        # Get the line number of - last inactive key
+        # Get the line number of - last commented configuration
         LINE_NUMBER=$(grep -Pn "$INACTIVE_KEYS_REGEX" "$file_location" | tail -1 | cut -d: -f 1)
 
         (( LINE_NUMBER++ ))
 
-        # Insert the correct setting below the last inactive key
+        # Insert the correct setting below the last commented configuration
         sed -i "$LINE_NUMBER"'i'"$key"' '"$value" "$file_location"
     fi
 }
@@ -881,7 +925,7 @@ op_log "${OP_TEXT[3]}"
     file_log "Disable password login -> PasswordAuthentication no"
 
     # Set SSH Authorization-Keys path
-    set_config_key "/etc/ssh/sshd_config" "AuthorizedKeysFile" '%h\/\.ssh\/authorized_keys'
+    set_config_key "/etc/ssh/sshd_config" "AuthorizedKeysFile" '\.ssh\/authorized_keys %h\/\.ssh\/authorized_keys'
     set_op_code $?
     file_log "Set SSH Authorization-Keys path -> AuthorizedKeysFile '%h\/\.ssh\/authorized_keys'"
 
@@ -906,52 +950,78 @@ fi
 
 if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
     # Low priority - But what to do if it fails???
-    op_log "Changing urls in sources.list to defaults"
+    reset_op_code
+    update_event_status "${OP_TEXT[5]}" 1
+    op_log "${OP_TEXT[4]}"
+    {
+        cp /etc/apt/sources.list /etc/apt/sources.list"${BACKUP_EXTENSION}"
+        set_op_code $?
 
-    cp /etc/apt/sources.list /etc/apt/sources.list"${BACKUP_EXTENSION}" 2>> "$LOGFILE" >&2
-    sed -i "1,$(wc -l < /etc/apt/sources.list) s/^/#/" /etc/apt/sources.list 2>> "$LOGFILE" >&2
+        sed -i "1,$(wc -l < /etc/apt/sources.list) s/^/#/" /etc/apt/sources.list
 
-    # Default sources list for debian
-cat <<TAG > /etc/apt/sources.list || exit 1
-deb https://deb.debian.org/debian ${DEB_VER_STR} main
-deb-src https://deb.debian.org/debian ${DEB_VER_STR} main
+if [[ $OS = "debian" ]]; then
+
+# Default sources list for debian
+cat <<DEBIAN >> /etc/apt/sources.list
+deb http://deb.debian.org/debian ${DEB_VER_STR} main contrib non-free
+deb-src http://deb.debian.org/debian ${DEB_VER_STR} main contrib non-free
 
 ## Major bug fix updates produced after the final release of the
 ## distribution.
-deb http://security.debian.org ${DEB_VER_STR}/updates main
-deb-src http://security.debian.org ${DEB_VER_STR}/updates main
+deb http://security.debian.org ${DEB_VER_STR}/updates main contrib non-free
+deb-src http://security.debian.org ${DEB_VER_STR}/updates main contrib non-free
 
-deb https://deb.debian.org/debian ${DEB_VER_STR}-updates main
-deb-src https://deb.debian.org/debian ${DEB_VER_STR}-updates main
+deb http://deb.debian.org/debian ${DEB_VER_STR}-updates main contrib non-free
+deb-src http://deb.debian.org/debian ${DEB_VER_STR}-updates main contrib non-free
 
-deb https://deb.debian.org/debian ${DEB_VER_STR}-backports main
-deb-src https://deb.debian.org/debian ${DEB_VER_STR}-backports main
-TAG
+deb http://deb.debian.org/debian ${DEB_VER_STR}-backports main contrib non-free
+deb-src http://deb.debian.org/debian ${DEB_VER_STR}-backports main contrib non-free
+DEBIAN
+        
+elif [[ $OS = "ubuntu" ]]; then
 
-    # Find any additional sources listed by the provider and comment them out
-    SOURCE_FILES=(/etc/apt/source*/*.list) 2>> "$LOGFILE" >&2
-    if [[ ${#SOURCE_FILES[@]} -gt 0 ]]; then
-        for file in "${SOURCE_FILES[@]}";
-        do
-            cp "$file" "$file""${BACKUP_EXTENSION}" 2>> "$LOGFILE" >&2
-            sed -i "1,$(wc -l < "$file") s/^/#/" "$file" 2>> "$LOGFILE" >&2
-        done
-    fi
+cat <<UBUNTU >> /etc/apt/sources.list
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
 
-    # Comment out cloud-init generated templates for sources
-    # CLOUD_INIT_FILES=(/etc/cloud/templates*/*.tmpl) 2>> "$LOGFILE" >&2
-    # if [[ ${#CLOUD_INIT_FILES[@]} -gt 0 ]]; then
-    #     for file in "${CLOUD_INIT_FILES[@]}";
-    #     do
-    #         cp "$file" "$file""${BACKUP_EXTENSION}" 2>> "$LOGFILE" >&2
-    #         sed -i "1,$(wc -l < "$file") s/^/#/" "$file" 2>> "$LOGFILE" >&2
-    #     done
-    # fi
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates main restricted
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates main restricted
+
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates universe multiverse
+
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-backports main restricted universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-backports main restricted universe multiverse
+
+deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security main restricted
+deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security main restricted
+deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security universe
+deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security universe
+deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security multiverse
+deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security multiverse
+UBUNTU
+        
+fi
+        # Find any additional sources listed by the provider and comment them out
+        SOURCE_FILES=(/etc/apt/source*/*.list)
+        if [[ ${#SOURCE_FILES[@]} -gt 0 ]]; then
+            for file in "${SOURCE_FILES[@]}";
+            do
+                cp "$file" "$file""${BACKUP_EXTENSION}"
+                sed -i "1,$(wc -l < "$file") s/^/#/" "$file"
+            done
+        fi
+    } 2>> "$LOGFILE" >&2
 
     if [[ $? -eq 0 ]]; then
-        op_log "Changing urls in sources.list to defaults" "FAILED"
+        update_event_status "${OP_TEXT[4]}" 2
+        op_log "${OP_TEXT[4]}" "SUCCESSFUL"
     else
-        op_log "Changing urls in sources.list to defaults" "FAILED"
+        update_event_status "${OP_TEXT[4]}" 3
+        op_log "${OP_TEXT[4]}" "FAILED"
+        revert_source_list_changes
     fi
 fi
 
@@ -966,7 +1036,7 @@ op_log "${OP_TEXT[5]}"
 {
     apt-get update
     apt-get upgrade -y
-    apt-get install -y sudo curl screen ufw fail2ban
+    apt-get install -y sudo systemd curl screen ufw fail2ban
     set_op_code $?
 } 2>> "$LOGFILE" >&2
 
@@ -990,7 +1060,9 @@ if [[ $InstallReqSoftwares -eq 2 ]]; then
     update_event_status "${OP_TEXT[6]}" 1
     op_log "${OP_TEXT[6]}"
     {
-        ufw allow ssh && ufw allow http && ufw allow https && ufw enable
+        ufw allow ssh && ufw allow http && ufw allow https 
+        set_op_code $?
+        echo "y" | ufw enable
         set_op_code $?
     } 2>> "$LOGFILE" >&2
 
@@ -1002,6 +1074,9 @@ if [[ $InstallReqSoftwares -eq 2 ]]; then
         op_log "${OP_TEXT[6]}" "FAILED"
         revert_config_UFW
     fi
+else
+    op_log "${OP_TEXT[6]}" "NO-OP"
+    file_log "Skipping UFW Config since software install failed..."
 fi
 
 
@@ -1032,9 +1107,14 @@ if [[ $InstallReqSoftwares -eq 2 ]]; then
             # - No [DEFAULT] section present
             # - no "bantime" or "backend" or "ignoreip" - options present
             # But that is NOT very important - cause fail2ban defaults are sane anyways
-        sed -ri "$startline,$endline s/^bantime = .*/bantime = 18000/" /etc/fail2ban/jail.local
-        sed -ri "$startline,$endline s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
-        sed -ri "$startline,$endline s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
+        #sed -ri "$startline,$endline s/^bantime[[:blank:]]*= .*/bantime = 18000/" /etc/fail2ban/jail.local
+        #sed -ri "$startline,$endline s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
+        #sed -ri "$startline,$endline s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
+
+        # Start search from the line that contains [DEFAULT] - end search before the line that contains # JAILS
+        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^bantime[[:blank:]]*= .*/bantime = 18000/" /etc/fail2ban/jail.local
+        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
+        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
 
         # TODO - Below - make it usable for Ubuntu as well
         cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
@@ -1071,6 +1151,9 @@ FAIL2BAN
         op_log "${OP_TEXT[7]}" "FAILED"
         revert_config_fail2ban
     fi
+else
+    op_log "${OP_TEXT[7]}" "NO-OP"
+    file_log "Skipping UFW Config since software install failed..."
 fi
 
 
