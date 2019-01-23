@@ -12,7 +12,7 @@
     # Hetzner
 
 # TODO - fail2ban does not work on Ubuntu 14.04 => does NOT read the defaults-debian.conf file
-    # => Check what makes debian read it => something in fail2ban.conf file
+    # ssh with default values enabled - That is good for now though
 
 SCRIPT_NAME=server_harden
 SCRIPT_VERSION=0.2
@@ -210,7 +210,7 @@ if [[ "$RESET_ROOT_PWD" == "y" ]]; then
     printf "%3s Reset root password\\n" " -" | tee -a "$LOGFILE"
 fi
 if [[ "$QUIET" == "y" ]]; then
-    printf "%3s No prompt installtion selected\\n\\n" " -" | tee -a "$LOGFILE"
+    printf "%3s No prompt installation selected\\n\\n" " -" | tee -a "$LOGFILE"
 fi
 
 echo
@@ -833,6 +833,250 @@ fi
 
 
 ##############################################################
+# Change default source-list
+##############################################################
+
+if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
+    # Low priority - But what to do if it fails???
+    reset_op_code
+    update_event_status "${OP_TEXT[5]}" 1
+    op_log "${OP_TEXT[4]}"
+    {
+        cp /etc/apt/sources.list /etc/apt/sources.list"${BACKUP_EXTENSION}"
+        set_op_code $?
+
+        sed -i "1,$(wc -l < /etc/apt/sources.list) s/^/#/" /etc/apt/sources.list
+
+if [[ $OS = "debian" ]]; then
+
+# Default sources list for debian
+cat <<DEBIAN >> /etc/apt/sources.list
+deb http://deb.debian.org/debian ${DEB_VER_STR} main contrib non-free
+deb-src http://deb.debian.org/debian ${DEB_VER_STR} main contrib non-free
+
+## Major bug fix updates produced after the final release of the
+## distribution.
+deb http://security.debian.org ${DEB_VER_STR}/updates main contrib non-free
+deb-src http://security.debian.org ${DEB_VER_STR}/updates main contrib non-free
+
+deb http://deb.debian.org/debian ${DEB_VER_STR}-updates main contrib non-free
+deb-src http://deb.debian.org/debian ${DEB_VER_STR}-updates main contrib non-free
+
+deb http://deb.debian.org/debian ${DEB_VER_STR}-backports main contrib non-free
+deb-src http://deb.debian.org/debian ${DEB_VER_STR}-backports main contrib non-free
+DEBIAN
+        
+elif [[ $OS = "ubuntu" ]]; then
+
+cat <<UBUNTU >> /etc/apt/sources.list
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
+
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates main restricted
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates main restricted
+
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates universe multiverse
+
+deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-backports main restricted universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-backports main restricted universe multiverse
+
+deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security main restricted
+deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security main restricted
+deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security universe
+deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security universe
+deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security multiverse
+deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security multiverse
+UBUNTU
+        
+fi
+        # Find any additional sources listed by the provider and comment them out
+        SOURCE_FILES=(/etc/apt/source*/*.list)
+        if [[ ${#SOURCE_FILES[@]} -gt 0 ]]; then
+            for file in "${SOURCE_FILES[@]}";
+            do
+                cp "$file" "$file""${BACKUP_EXTENSION}"
+                sed -i "1,$(wc -l < "$file") s/^/#/" "$file"
+            done
+        fi
+    } 2>> "$LOGFILE" >&2
+
+    if [[ $? -eq 0 ]]; then
+        update_event_status "${OP_TEXT[4]}" 2
+        op_log "${OP_TEXT[4]}" "SUCCESSFUL"
+    else
+        update_event_status "${OP_TEXT[4]}" 3
+        op_log "${OP_TEXT[4]}" "FAILED"
+        revert_source_list_changes
+    fi
+fi
+
+
+##############################################################
+# Install required softwares
+##############################################################
+
+reset_op_code
+update_event_status "${OP_TEXT[5]}" 1
+op_log "${OP_TEXT[5]}"
+{
+    apt-get update
+    export DEBIAN_FRONTEND=noninteractive ; apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+    apt-get install -y sudo curl screen ufw fail2ban
+    set_op_code $?
+} 2>> "$LOGFILE" >&2
+
+if [[ $OP_CODE -eq 0 ]]; then
+    update_event_status "${OP_TEXT[5]}" 2
+    op_log "${OP_TEXT[5]}" "SUCCESSFUL"
+else
+    update_event_status "${OP_TEXT[5]}" 3
+    op_log "${OP_TEXT[5]}" "FAILED"
+    revert_software_installs
+fi
+
+
+##############################################################
+# Configure UFW
+##############################################################
+
+# If install software failed - do not proceed
+if [[ $InstallReqSoftwares -eq 2 ]]; then
+    reset_op_code
+    update_event_status "${OP_TEXT[6]}" 1
+    op_log "${OP_TEXT[6]}"
+    {
+        ufw allow ssh && ufw allow http && ufw allow https 
+        set_op_code $?
+        echo "y" | ufw enable
+        set_op_code $?
+    } 2>> "$LOGFILE" >&2
+
+    if [[ $OP_CODE -eq 0 ]]; then
+        update_event_status "${OP_TEXT[6]}" 2
+        op_log "${OP_TEXT[6]}" "SUCCESSFUL"
+    else
+        update_event_status "${OP_TEXT[6]}" 3
+        op_log "${OP_TEXT[6]}" "FAILED"
+        revert_config_UFW
+    fi
+else
+    op_log "${OP_TEXT[6]}" "NO-OP"
+    file_log "Skipping UFW Config since software install failed..."
+fi
+
+
+##############################################################
+# Configure Fail2Ban
+##############################################################
+
+# If install software failed - do not proceed
+if [[ $InstallReqSoftwares -eq 2 ]]; then
+    reset_op_code
+    update_event_status "${OP_TEXT[7]}" 1
+    op_log "${OP_TEXT[7]}"
+    {
+        if [[ -f /etc/fail2ban/jail.local ]]; then
+            cp /etc/fail2ban/jail.local /etc/fail2ban/jail.local"$BACKUP_EXTENSION"
+        else
+            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+            set_op_code $?
+            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.conf"$BACKUP_EXTENSION"
+        fi
+
+        # startline & endline - restrict the search to [DEFAULT] section
+        startline=$(grep -Pnxm 1 "(^ *)\[DEFAULT\]" /etc/fail2ban/jail.local | cut -d: -f 1)
+        endline=$(grep -Pnxm 1 "(^ *)\[sshd\]" /etc/fail2ban/jail.local | cut -d: -f 1)
+        pub_ip=$(curl https://ipinfo.io/ip 2>> /dev/null) 
+
+        # TODO - Exception handle 
+            # - No [DEFAULT] section present
+            # - no "bantime" or "backend" or "ignoreip" - options present
+            # But that is NOT very important - cause fail2ban defaults are sane anyways
+
+        # Start search from the line that contains [DEFAULT] - end search before the line that contains # JAILS
+        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^bantime[[:blank:]]*= .*/bantime = 18000/" /etc/fail2ban/jail.local
+        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
+        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
+
+        if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf ]]; then
+            cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
+        fi
+        
+cat <<FAIL2BAN > /etc/fail2ban/jail.d/defaults-debian.conf
+[sshd]
+enabled = true
+maxretry = 3
+bantime = 2592000
+
+[sshd-ddos]
+enabled = true
+maxretry = 5
+bantime = 2592000
+
+[recidive]
+enabled = true
+bantime  = 31536000             ; 1 year
+findtime = 86400                ; 1 days
+maxretry = 10
+FAIL2BAN
+
+        set_op_code $?
+
+        service fail2ban start
+        set_op_code $?
+    } 2>> "$LOGFILE" >&2
+
+    if [[ $OP_CODE -eq 0 ]]; then
+        update_event_status "${OP_TEXT[7]}" 2
+        op_log "${OP_TEXT[7]}" "SUCCESSFUL"
+    else
+        update_event_status "${OP_TEXT[7]}" 3
+        op_log "${OP_TEXT[7]}" "FAILED"
+        revert_config_fail2ban
+    fi
+else
+    op_log "${OP_TEXT[7]}" "NO-OP"
+    file_log "Skipping UFW Config since software install failed..."
+fi
+
+
+##############################################################
+# Change root's password
+##############################################################
+
+if [[ $RESET_ROOT_PWD == 'y' ]]; then
+
+    reset_op_code
+    update_event_status "${OP_TEXT[8]}" 1
+    op_log "${OP_TEXT[8]}"
+    {
+        # Generate a 15 character random password
+        PASS_ROOT="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
+        set_op_code $?
+
+        file_log "Generated Root Password - ${PASS_ROOT}"
+
+        # Change root's password
+        echo -e "${PASS_ROOT}\\n${PASS_ROOT}" | passwd
+        set_op_code $?
+    } 2>> "$LOGFILE" >&2
+
+    if [[ $OP_CODE -eq 0 ]]; then
+        update_event_status "${OP_TEXT[8]}" 2
+        op_log "${OP_TEXT[8]}" "SUCCESSFUL"
+    else
+        # Low priority - since we are disabling root login anyways
+        update_event_status "${OP_TEXT[8]}" 3
+        op_log "${OP_TEXT[8]}" "FAILED"
+        revert_root_pass_change
+    fi
+fi
+
+
+##############################################################
 # Enable SSH-only login
 ##############################################################
 
@@ -951,257 +1195,16 @@ if [[ $OP_CODE -eq 0 ]]; then
     op_log "${OP_TEXT[3]}" "SUCCESSFUL"
 else
     file_log "Enabling SSH-only login failed."
+    #TODO - Since it is at the end
+        # We will have to revert 
+        # source-list
+        # Install required softwares
+        # UFW
+        # Fail2ban
     update_event_status "${OP_TEXT[3]}" 3
     op_log "${OP_TEXT[3]}" "FAILED"
     finally "${OP_TEXT[3]}"
     exit 1;
-fi
-
-
-##############################################################
-# Change default source-list
-##############################################################
-
-if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
-    # Low priority - But what to do if it fails???
-    reset_op_code
-    update_event_status "${OP_TEXT[5]}" 1
-    op_log "${OP_TEXT[4]}"
-    {
-        cp /etc/apt/sources.list /etc/apt/sources.list"${BACKUP_EXTENSION}"
-        set_op_code $?
-
-        sed -i "1,$(wc -l < /etc/apt/sources.list) s/^/#/" /etc/apt/sources.list
-
-if [[ $OS = "debian" ]]; then
-
-# Default sources list for debian
-cat <<DEBIAN >> /etc/apt/sources.list
-deb http://deb.debian.org/debian ${DEB_VER_STR} main contrib non-free
-deb-src http://deb.debian.org/debian ${DEB_VER_STR} main contrib non-free
-
-## Major bug fix updates produced after the final release of the
-## distribution.
-deb http://security.debian.org ${DEB_VER_STR}/updates main contrib non-free
-deb-src http://security.debian.org ${DEB_VER_STR}/updates main contrib non-free
-
-deb http://deb.debian.org/debian ${DEB_VER_STR}-updates main contrib non-free
-deb-src http://deb.debian.org/debian ${DEB_VER_STR}-updates main contrib non-free
-
-deb http://deb.debian.org/debian ${DEB_VER_STR}-backports main contrib non-free
-deb-src http://deb.debian.org/debian ${DEB_VER_STR}-backports main contrib non-free
-DEBIAN
-        
-elif [[ $OS = "ubuntu" ]]; then
-
-cat <<UBUNTU >> /etc/apt/sources.list
-deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
-deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
-
-deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates main restricted
-deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates main restricted
-
-deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} universe multiverse
-deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} universe multiverse
-deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates universe multiverse
-deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-updates universe multiverse
-
-deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-backports main restricted universe multiverse
-deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR}-backports main restricted universe multiverse
-
-deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security main restricted
-deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security main restricted
-deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security universe
-deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security universe
-deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security multiverse
-deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security multiverse
-UBUNTU
-        
-fi
-        # Find any additional sources listed by the provider and comment them out
-        SOURCE_FILES=(/etc/apt/source*/*.list)
-        if [[ ${#SOURCE_FILES[@]} -gt 0 ]]; then
-            for file in "${SOURCE_FILES[@]}";
-            do
-                cp "$file" "$file""${BACKUP_EXTENSION}"
-                sed -i "1,$(wc -l < "$file") s/^/#/" "$file"
-            done
-        fi
-    } 2>> "$LOGFILE" >&2
-
-    if [[ $? -eq 0 ]]; then
-        update_event_status "${OP_TEXT[4]}" 2
-        op_log "${OP_TEXT[4]}" "SUCCESSFUL"
-    else
-        update_event_status "${OP_TEXT[4]}" 3
-        op_log "${OP_TEXT[4]}" "FAILED"
-        revert_source_list_changes
-    fi
-fi
-
-
-##############################################################
-# Install required softwares
-##############################################################
-
-reset_op_code
-update_event_status "${OP_TEXT[5]}" 1
-op_log "${OP_TEXT[5]}"
-{
-    apt-get update
-    apt-get upgrade -y
-    apt-get install -y sudo curl screen ufw fail2ban
-    set_op_code $?
-} 2>> "$LOGFILE" >&2
-
-if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "${OP_TEXT[5]}" 2
-    op_log "${OP_TEXT[5]}" "SUCCESSFUL"
-else
-    update_event_status "${OP_TEXT[5]}" 3
-    op_log "${OP_TEXT[5]}" "FAILED"
-    revert_software_installs
-fi
-
-
-##############################################################
-# Configure UFW
-##############################################################
-
-# If install software failed - do not proceed
-if [[ $InstallReqSoftwares -eq 2 ]]; then
-    reset_op_code
-    update_event_status "${OP_TEXT[6]}" 1
-    op_log "${OP_TEXT[6]}"
-    {
-        ufw allow ssh && ufw allow http && ufw allow https 
-        set_op_code $?
-        echo "y" | ufw enable
-        set_op_code $?
-    } 2>> "$LOGFILE" >&2
-
-    if [[ $OP_CODE -eq 0 ]]; then
-        update_event_status "${OP_TEXT[6]}" 2
-        op_log "${OP_TEXT[6]}" "SUCCESSFUL"
-    else
-        update_event_status "${OP_TEXT[6]}" 3
-        op_log "${OP_TEXT[6]}" "FAILED"
-        revert_config_UFW
-    fi
-else
-    op_log "${OP_TEXT[6]}" "NO-OP"
-    file_log "Skipping UFW Config since software install failed..."
-fi
-
-
-##############################################################
-# Configure Fail2Ban
-##############################################################
-
-# If install software failed - do not proceed
-if [[ $InstallReqSoftwares -eq 2 ]]; then
-    reset_op_code
-    update_event_status "${OP_TEXT[7]}" 1
-    op_log "${OP_TEXT[7]}"
-    {
-        if [[ -f /etc/fail2ban/jail.local ]]; then
-            cp /etc/fail2ban/jail.local /etc/fail2ban/jail.local"$BACKUP_EXTENSION"
-        else
-            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-            set_op_code $?
-            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.conf"$BACKUP_EXTENSION"
-        fi
-
-        # startline & endline - restrict the search to [DEFAULT] section
-        startline=$(grep -Pnxm 1 "(^ *)\[DEFAULT\]" /etc/fail2ban/jail.local | cut -d: -f 1)
-        endline=$(grep -Pnxm 1 "(^ *)\[sshd\]" /etc/fail2ban/jail.local | cut -d: -f 1)
-        pub_ip=$(curl https://ipinfo.io/ip 2>> /dev/null) 
-
-        # TODO - Exception handle 
-            # - No [DEFAULT] section present
-            # - no "bantime" or "backend" or "ignoreip" - options present
-            # But that is NOT very important - cause fail2ban defaults are sane anyways
-        #sed -ri "$startline,$endline s/^bantime[[:blank:]]*= .*/bantime = 18000/" /etc/fail2ban/jail.local
-        #sed -ri "$startline,$endline s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
-        #sed -ri "$startline,$endline s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
-
-        # Start search from the line that contains [DEFAULT] - end search before the line that contains # JAILS
-        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^bantime[[:blank:]]*= .*/bantime = 18000/" /etc/fail2ban/jail.local
-        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
-        sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
-
-        if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf ]]; then
-            cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
-        fi
-        
-cat <<FAIL2BAN > /etc/fail2ban/jail.d/defaults-debian.conf
-[sshd]
-enabled = true
-maxretry = 3
-bantime = 2592000
-
-[sshd-ddos]
-enabled = true
-maxretry = 5
-bantime = 2592000
-
-[recidive]
-enabled = true
-bantime  = 31536000             ; 1 year
-findtime = 86400                ; 1 days
-maxretry = 10
-FAIL2BAN
-
-        set_op_code $?
-
-        service fail2ban start
-        set_op_code $?
-    } 2>> "$LOGFILE" >&2
-
-    if [[ $OP_CODE -eq 0 ]]; then
-        update_event_status "${OP_TEXT[7]}" 2
-        op_log "${OP_TEXT[7]}" "SUCCESSFUL"
-    else
-        update_event_status "${OP_TEXT[7]}" 3
-        op_log "${OP_TEXT[7]}" "FAILED"
-        revert_config_fail2ban
-    fi
-else
-    op_log "${OP_TEXT[7]}" "NO-OP"
-    file_log "Skipping UFW Config since software install failed..."
-fi
-
-
-##############################################################
-# Change root's password
-##############################################################
-
-if [[ $RESET_ROOT_PWD == 'y' ]]; then
-
-    reset_op_code
-    update_event_status "${OP_TEXT[8]}" 1
-    op_log "${OP_TEXT[8]}"
-    {
-        # Generate a 15 character random password
-        PASS_ROOT="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
-        set_op_code $?
-
-        file_log "Generated Root Password - ${PASS_ROOT}"
-
-        # Change root's password
-        echo -e "${PASS_ROOT}\\n${PASS_ROOT}" | passwd
-        set_op_code $?
-    } 2>> "$LOGFILE" >&2
-
-    if [[ $OP_CODE -eq 0 ]]; then
-        update_event_status "${OP_TEXT[8]}" 2
-        op_log "${OP_TEXT[8]}" "SUCCESSFUL"
-    else
-        # Low priority - since we are disabling root login anyways
-        update_event_status "${OP_TEXT[8]}" 3
-        op_log "${OP_TEXT[8]}" "FAILED"
-        revert_root_pass_change
-    fi
 fi
 
 
