@@ -29,7 +29,7 @@ The script is intended to be executed immediately after you have access to a **n
 # bash https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh --quiet
 ```
 
-# What does it to exactly?
+# What does it do exactly?
 Script performed the following operations:-
 
 1. Create non-root user and give it "sudo" privilege.
@@ -40,19 +40,19 @@ Script performed the following operations:-
 6. Configures UFW
 7. Configures Fail2Ban
 8. Alters SSH options(/etc/ssh/sshd_config) to do the following:-
-   ..* Disable SSH login for **__root__** (PermitRootLogin no)
-   ..* Disable SSH login through password for all users (PasswordAuthentication no) 
-   ..* Updates path for *authoried_keys* file
+   * Disable SSH login for **__root__** (PermitRootLogin no)
+   * Disable SSH login through password for all users (PasswordAuthentication no) 
+   * Updates path for *authoried_keys* file
 9. *[Optionally] Resets root password*
 10. On successfully completing above operations, display the following on screen:-
-    ..* Username
-    ..* User Password
-    ..* SSH Private Key's path on the server
-    ..* SSH Public Key's path on the server
-    ..* SSH Private Key's passphrase
-    ..* (If so opted) New root password
-    ..* SSH Private Key
-    ..* SSH Public Key
+    * Username
+    * User Password
+    * SSH Private Key's path on the server
+    * SSH Public Key's path on the server
+    * SSH Private Key's passphrase
+    * (If so opted) New root password
+    * SSH Private Key
+    * SSH Public Key
 
 ## Details of each operation
 ### 1. Create non-root user and give it "sudo" privilege
