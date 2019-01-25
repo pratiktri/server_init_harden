@@ -10,6 +10,7 @@
     # DigitalOcean
     # OVH
     # Hetzner
+    # How it behaves on repeat execution
 
 # TODO - fail2ban does not work on Ubuntu 14.04 => does NOT read the defaults-debian.conf file
     # ssh with default values enabled - That is good for now though
