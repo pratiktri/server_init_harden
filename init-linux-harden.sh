@@ -1,7 +1,7 @@
 #!/etc/bin/env bash
 
-# What to do if making .bkp file fails?
-#Test
+# TODO - What to do if making .bkp file fails?
+# TODO - Test
     # 1 - Deb 9.x
     # 2 - Deb 8.x
     # 3 - Ubuntu 14.x
@@ -14,6 +14,10 @@
 
 # TODO - fail2ban does not work on Ubuntu 14.04 => does NOT read the defaults-debian.conf file
     # ssh with default values enabled - That is good for now though
+# TODO - Schedule daily system update
+# TODO - Enable LUKS (https://gitlab.com/cryptsetup/cryptsetup/as)
+# DNSCrypt
+# TODO - on successful restoration - delete the bkp file
 
 SCRIPT_NAME=server_harden
 SCRIPT_VERSION=0.2
@@ -359,18 +363,12 @@ function revert_create_user(){
 function revert_create_ssh_key(){
     local success;
 
-    revert_create_user
     file_log "Reverting SSH Key Generation..."
+    revert_create_user
+    success=$?
 
-    KEY_FILE_BKPS=("$SSH_DIR"/"$NORM_USER_NAME".pem*"$BACKUP_EXTENSION")
-
-    if [[ ${#KEY_FILE_BKPS[@]} -gt 0 ]]; then
-        unalias cp &>/dev/null
-        for key in "${KEY_FILE_BKPS[@]}"; do
-            cp -rf "$key" "${key//$BACKUP_EXTENSION/}" 2>> "$LOGFILE" >&2
-            success=$?
-        done
-    fi
+    # Since all SSH files are created inside the user's home directory
+        # There is nothing to revert if username is deleted
 
     if [[ $success -eq 0 ]]; then
         op_rev_log "Reverting - SSH Key Generation" "SUCCESSFUL"
@@ -410,6 +408,8 @@ function revert_ssh_only_login(){
     local success;
 
     revert_secure_authorized_key
+    revert_config_UFW
+    revert_config_fail2ban
     file_log "Reverting SSH-only Login..."
 
     if [[ -f /etc/ssh/sshd_config"$BACKUP_EXTENSION" ]]; then
@@ -417,6 +417,9 @@ function revert_ssh_only_login(){
         cp -rf /etc/ssh/sshd_config"$BACKUP_EXTENSION" /etc/ssh/sshd_config 2>> "$LOGFILE" >&2
         success=$?
     fi
+
+    service sshd restart 2>> "$LOGFILE" >&2
+    success=$?
 
     if [[ $success -eq 0 ]]; then
         op_rev_log "Reverting - SSH-only Login" "SUCCESSFUL"
@@ -463,7 +466,7 @@ function revert_config_UFW(){
     local success;
     file_log "Reverting UFW Configuration..."
 
-    ufw disable
+    ufw disable 2>> "$LOGFILE" >&2
     success=$?
 
     if [[ $success -eq 0 ]]; then
@@ -496,6 +499,9 @@ function revert_config_fail2ban(){
         cp -rf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" /etc/fail2ban/jail.d/defaults-debian.conf 2>> "$LOGFILE" >&2
         success=$?
     fi
+
+    service fail2ban restart 2>> "$LOGFILE" >&2
+    success=$?
 
     if [[ $success -eq 0 ]]; then
         op_rev_log "Reverting - Fail2ban Config" "SUCCESSFUL"
@@ -695,7 +701,7 @@ OP_TEXT=(
 )
 
 ##############################################################
-# Create non-root user
+# Step 1 - Create non-root user
 ##############################################################
 
 reset_op_code
@@ -732,7 +738,7 @@ fi
 
 
 ##############################################################
-# Create SSH Key for the above new user
+# Step 2 - Create SSH Key for the above new user
 ##############################################################
 
 reset_op_code
@@ -794,7 +800,7 @@ fi
 
 
 ##############################################################
-# Secure authorized_keys file
+# Step 3 - Secure authorized_keys file
 ##############################################################
 
 reset_op_code
@@ -834,7 +840,7 @@ fi
 
 
 ##############################################################
-# Change default source-list
+# Step 4 - Change default source-list
 ##############################################################
 
 if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
@@ -916,7 +922,7 @@ fi
 
 
 ##############################################################
-# Install required softwares
+# Step 5 - Install required softwares
 ##############################################################
 
 reset_op_code
@@ -940,7 +946,7 @@ fi
 
 
 ##############################################################
-# Configure UFW
+# Step 6 - Configure UFW
 ##############################################################
 
 # If install software failed - do not proceed
@@ -970,7 +976,7 @@ fi
 
 
 ##############################################################
-# Configure Fail2Ban
+# Step 7 - Configure Fail2Ban
 ##############################################################
 
 # If install software failed - do not proceed
@@ -1045,7 +1051,7 @@ fi
 
 
 ##############################################################
-# Change root's password
+# Step 8 - Change root's password
 ##############################################################
 
 if [[ $RESET_ROOT_PWD == 'y' ]]; then
@@ -1078,7 +1084,7 @@ fi
 
 
 ##############################################################
-# Enable SSH-only login
+# Step 9 - Enable SSH-only login
 ##############################################################
 
 # TODO - Replace this horror with sed
@@ -1196,12 +1202,6 @@ if [[ $OP_CODE -eq 0 ]]; then
     op_log "${OP_TEXT[3]}" "SUCCESSFUL"
 else
     file_log "Enabling SSH-only login failed."
-    #TODO - Since it is at the end
-        # We will have to revert 
-        # source-list
-        # Install required softwares
-        # UFW
-        # Fail2ban
     update_event_status "${OP_TEXT[3]}" 3
     op_log "${OP_TEXT[3]}" "FAILED"
     finally "${OP_TEXT[3]}"

@@ -4,6 +4,14 @@ I wanted to change my VPS(Virtual Private Server) provider and was testing out m
 
 This script is meant to save that time.
 
+*** __WARNING__ ***
+---
+This script can potentially make your server inaccessible. Proceed with caution.
+
+# Status
+
+Alpha testing. NOT production ready.
+
 # Getting Started
 
 ## Prerequisites
@@ -15,36 +23,36 @@ This script is meant to save that time.
   - Ubuntu 16.x
   - Ubuntu 18.x
 * *curl* or *wget* should be installed
-* *__root__* access to the server
+* *root* access to the server
 
 ## Usage
 
-The script is intended to be executed immediately after you have access to a **new** Linux server (most likely a VPS) as *__root__*.
+The script is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VPS) as *__root__*.
 
 ```bash
-# bash https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh --help
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh)" --help
 
-# bash https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh --username someusername --resetrootpwd --defaultsourcelist
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh)" --username someusername --resetrootpwd --defaultsourcelist
 
-# bash https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh --quiet
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh)" --quiet
 ```
 
 # What does it do exactly?
 Script performed the following operations:-
 
-1. Create non-root user and give it "sudo" privilege.
-2. Generate passphrage protected *ed25519* SSH Keys (Private & Public).
-3. Secure "authorized_keys" file.
-4. [Optionally] Resets the url from which apt gets software from. Resets them to the flavour provided urls.
-5. Updates + Upgrades + Installs required softwares (sudo curl screen ufw fail2ban)
-6. Configures UFW
-7. Configures Fail2Ban
-8. Alters SSH options(/etc/ssh/sshd_config) to do the following:-
+1. [Create non-root user and give it "sudo" privilege.](https://github.com/pratiktri/init-li-harden#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
+2. [Generate passphrage protected *ed25519* SSH Keys (Private & Public).](https://github.com/pratiktri/init-li-harden#2-generate-passphrage-protected-ed25519-ssh-keys-private--public "Goto details of the step")
+3. [Secure "authorized_keys" file.](https://github.com/pratiktri/init-li-harden#3-secure-authorized_keys-file "Goto details of the step")
+4. [[Optionally] Resets the url from which apt gets software from. Resets them to the flavour provided urls.](https://github.com/pratiktri/init-li-harden#4-optionally-resets-the-url-from-which-apt-gets-software-from-resets-them-to-the-flavour-provided-urls "Goto details of the step")
+5. [Updates + Upgrades + Installs required softwares (sudo curl screen ufw fail2ban)](https://github.com/pratiktri/init-li-harden#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
+6. [Configure UFW](https://github.com/pratiktri/init-li-harden#6-configures-ufw "Goto details of the step")
+7. [Configure Fail2Ban](https://github.com/pratiktri/init-li-harden#7-configures-fail2ban "Goto details of the step")
+8. [Alters SSH options(/etc/ssh/sshd_config) to do the following:-](https://github.com/pratiktri/init-li-harden#8-alters-ssh-options "Goto details of the step")
    * Disable SSH login for **__root__** (PermitRootLogin no)
    * Disable SSH login through password for all users (PasswordAuthentication no) 
    * Updates path for *authoried_keys* file
-9. *[Optionally] Resets root password*
-10. On successfully completing above operations, display the following on screen:-
+9. [[Optionally] Resets root password](https://github.com/pratiktri/init-li-harden#9-optionally-resets-root-password "Goto details of the step")
+10. [On successfully completing above operations, display the following on screen:-](https://github.com/pratiktri/init-li-harden#10-on-successfully-completing-above-operations "Goto details of the step")
     * Username
     * User Password
     * SSH Private Key's path on the server
@@ -53,6 +61,28 @@ Script performed the following operations:-
     * (If so opted) New root password
     * SSH Private Key
     * SSH Public Key
+
+
+Step 2 & Step 5 are most time consuming operations.
+
+Step 8 is the most dangerous operation. 
+
+# Error Handling
+Since the script has the potential to make you loose access to your server, it takes a number of steps to recover from an error.
+
+## Back up files
+Script creates a back of every file that it changes. 
+
+Back up files are stored in the same directory as the original file. 
+
+Back up file name = (Original File Name) + "." + (Script start timestamp in '%d_%m_%Y-%H_%M_%S' format) + "_bak"
+
+So, if the original file name was *sshd_config* and the script was started at 25th January 2019 09:15:25, then the backup files name would be *sshd_config.25_01_2019-09_15_25_bak*
+
+## Recovery
+Script *tries* to recover from an error if it can determine that an error has occured. What is does to recover depends on which step the error has occured.
+
+**Step 9 (Alter /etc/ssh/sshd_config) is where most danger resides.** If this step fails & script can not successfully recovery - then you'll most likey loose all access to your system.
 
 ## Details of each operation
 ### 1. Create non-root user and give it "sudo" privilege
@@ -64,14 +94,34 @@ If "--username" is not provided, __*script will randomly generate an username fo
 
 Password for the user is always randomly generated. Passwords are 15 character long and are alphanumeric as well.
 
+> __Failure Impact__ - Minimal. An additional user on system. 
+>
+> __Restoration__ - Script tries to delete the user along with user's home directory
+>
+> __Impact of Restoration Failure__ - If the user will linger around in the system. You might have to manually delete the user and its home directory. 
+>
+> __After Error__ - Script will be terminated.
+
+
+
 ### 2. Generate passphrage protected *ed25519* SSH Keys (Private & Public)
 Since password authentications are bad security practice, script will generate a SSH Key and use that for user authentication.
 
-All SSH keys are not made the same and we use OpenSSH keyformat and ed25519 algorithm to generate ours. You can read the reason for that [here](https://security.stackexchange.com/questions/143442/what-are-ssh-keygen-best-practices#answer-144044) and [here](https://stribika.github.io/2015/01/04/secure-secure-shell.html). For additional security SSH Private keys are secured by a passphrase. This passphrase is randomly generated. Passphrase are 15 character long and are alphanumeric. Algorithm used for user's password and SSH Private Key's passphrase are the same.
+All SSH keys are not made the same. We use OpenSSH keyformat and ed25519 algorithm to generate ours. You can read the reason for that [here](https://security.stackexchange.com/questions/143442/what-are-ssh-keygen-best-practices#answer-144044) and [here](https://stribika.github.io/2015/01/04/secure-secure-shell.html). For additional security the key is secured by a passphrase. This passphrase is randomly generated. Passphrase are 15 character long and are alphanumeric. Algorithm used for user's password and SSH Private Key's passphrase are the same.
 
 Generated keys are placed in ".ssh" sub-directory of the user's (created in step 1 above) home-directory, i.e., /home/*__username__*/.ssh/
 
 SSH Public Key is then *appended* to /home/*__username__*/.ssh/authorized_keys file.
+
+> __Failure Impact__ - Minimal. An additional user on system. 
+> 
+> __Restoration__ - Script tries to delete the user along with user's home directory.
+> 
+> __Impact of Restoration Failure__ - If restoration of step 2 failed - most probably restoration on step 1 failed as well. At any case - just delete the user's home directory to rid your system of garbage files.
+> 
+> __After Error__ - Script will be terminated.
+
+
 
 ### 3. Secure "authorized_keys" file
 "authorized_keys" file present in user's .ssh sub-directory contains the Public Key values. These Public Key values are used to authenticate user logins. Since, this is an important file we need to secure it tight. 
@@ -82,6 +132,16 @@ Following are the file access restrictions that the script applies:-
 * Make the /home/*__username__*/.ssh/ directory and all files inside it visible only to the *root* user.
 * Remove the editing rights on /home/*__username__*/.ssh/authorized_keys file from every user - including *root*.
 * Make the /home/*__username__*/.ssh/authorized_keys file immutable.
+
+> __Failure Impact__ - Minimal. An additional user on system. 
+> 
+> __Restoration__ - Reset the attributes of "authorized_keys" file. Then deletes the user and its home directory.
+> 
+> __Impact of Restoration Failure__ - User and its home directory would persist. Delete them manually. Some of the files have their attributes modified to make them immutable (i.e. *chattr +i* ), so while deleting user's home directory manually, remember to remove this attribute (i.e. "*chattr -i* ).
+> 
+> __After Error__ - Script will be terminated.
+
+
 
 ### 4. [Optionally] Resets the url from which apt gets software from. Resets them to the flavour provided urls
 
@@ -95,13 +155,45 @@ If the script is started with --defaultsourcelist option, then for Debian http:/
 
 This is disabled by default.
 
+> __Failure Impact__ - In the worst case, you will not be able to update or install applications through *apt*. In the best case, Service providers CDN will continue to be used for *apt* to install & update applications. Script will continue to next step after restoration
+> 
+> __Restoration__ - Before execution, a back up of sources.list file was made. During restoration, this back up file is copied (over-written) over to sources.list file.
+> 
+> __Impact of Restoration Failure__ - You may not be able to install or update the system. Manually check if any *_bkp file exists in /etc/apt/ directory. If multiple file exist - use the most recent file and rename it to /etc/apt/sources.list
+> 
+> __After Error__ - Script continues to next step after restoration.
+
+
+
 ### 5. Updates + Upgrades + Installs required softwares (sudo  screen ufw fail2ban)
 Pretty self explanatory. 
-### 6. Configures UFW
+
+> __Failure Impact__ - Both UFW and Fail2ban CANNOT be configured. So, major part of server hardening will not be successful.
+> 
+> __Restoration__ - Nothing to restore. However, do check the log file to see that went wrong. 
+> 
+> __Impact of Restoration Failure__ - None.
+> 
+> __After Error__ - Script continues to next step.
+
+
+
+### 6. Configure UFW
 [UFW(**U**ncomplicated **F**ire**W**all)](https://www.digitalocean.com/community/tutorials/how-to-setup-a-firewall-with-ufw-on-an-ubuntu-and-debian-cloud-server) makes it easy to manage what kind of internet traffic enters or leaves the server. Without this program you would have to deal with Linux's iptables (which I can not understand at all).
 
 This script sets up UFW so that only __ssh__(required for user login), __http__(required for any web application) & __https__(also required for any web application) __traffic are allowed in and out__ of the server. All other traffic are blocked.
-### 7. Configures Fail2Ban
+
+> __Failure Impact__ - Less secure server.
+> 
+> __Restoration__ - Disable UFW
+> 
+> __Impact of Restoration Failure__ - Most probably UFW was not installed properly. Check log file for details. 
+> 
+> __After Error__ - Continue to next step after restoration.
+
+
+
+### 7. Configure Fail2Ban
 While UFW restrict access to ports, the ports that are required (and are allowed by UFW in above step) for our purpose can be exploited by nefarious actors.
 
 Fail2ban watches traffic coming through the allowed ports to determine if it is indeed a legitimate one. This determination is usually done by analyzing various *log files* being generated by Linux and other applications running on the server. If anything suspicious is found then after a certain number of illegitimate attempts the intruder(IP) is banned. Ban is then lifted after a desired amount of time.
@@ -111,18 +203,51 @@ This script sets up Fail2ban as following:-
 * Whitelists your server's IP from detection (uses https://ipinfo.io/ip to determine the IP),
 * sets (backend = polling). *polling* is an algoritm used to check if the *log files* are updated. This algorithm does not required any additional software and if no additional software are installed then is faster option to choose.
 * Explicitly enables protection for *ssh* with (maxretry = 3) & (bantime = 2592000)
+
+> __Failure Impact__ - Less secure server.
+> 
+> __Restoration__ - If back up of /etc/fail2ban/jail.local file found, then that is restored; else back up of /etc/fail2ban/jail.conf is restored. Also, back up of /etc/fail2ban/jail.d/defaults-debian.conf file restored if available.
+> 
+> __Impact of Restoration Failure__ - Potential corruption of Fail2ban configuration. Check log file for details.
+> 
+> __After Error__ - Continue to next step after restoration.
+
+
   
 ### 8. Alters SSH options
 This step contines from step 3 to harden our ssh login. Here, we do edit */etc/ssh/sshd_config* file to achieve the following:-
 * Disable root login (**PermitRootLogin no**). No one needs to work on root. The new user created already has *root* privileges anyways.
 * Disable password login (**PasswordAuthentication no**). This ensures we can ONLY login though SSH Keys.
 * Specify where to find authorized public keys which are granted login (\\.ssh\authorized_keys %h\\.ssh\authorized_keys)
+
+> __Failure Impact__ - Potentially __CATASTROPHIC__.
+> 
+> __Restoration__ - Delete user and its home directory; Disable UFW: If back up of /etc/fail2ban/jail.local file found, then that is restored; else back up of /etc/fail2ban/jail.conf is restored. Also, back up of /etc/fail2ban/jail.d/defaults-debian.conf file restored if available. Restore the /etc/ssh/sshd_config file from backup file created before the operation.
+> 
+> __Impact of Restoration Failure__ - Fatal. DO NOT logout of the session. If you do then, you may not be able to log back in. Check the log file to see what went wrong. Issue the following command and see what is the out put. Search the error message on internet for solution.
+> ```bash
+> # service sshd restart
+> ```
+> __After Error__ - Script will be terminated.
+
+
+
 ### 9. [Optionally] Resets root password
 Since, VPS providers sends you the password of your VPS's root user in email in plain text. So, password needs to be changed immediately. Note that **since we have disabled *root* login AND password login in the above step, changing *root* password might be an overkill**. But, still...
 
 Also most VPS providers these days, allow you to provide SSH Public Key in their website. If you have done that you can skip this step. **It is disabled by default anyways**.
 
 To change your root password provide option --resetrootpw. *root* password then be randomly generated. Passwords are 15 character long and are alphanumeric.
+
+> __Failure Impact__ - None. Continue using existing password.
+> 
+> __Restoration__ - Nothing to restore.
+> 
+> __Impact of Restoration Failure__ - None.
+> 
+> __After Error__ - Continue to next step.
+
+
 
 ### 10. On successfully completing above operations
 All the generated username, passwords, SSH Key location & SSH Keys themselves are displayed on the screen.
