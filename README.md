@@ -54,7 +54,7 @@ Script performed the following operations:-
    * Disable SSH login through password for all users (PasswordAuthentication no) 
    * Updates path for *authoried_keys* file
 9. [[Optionally] Reset *root* password](https://github.com/pratiktri/init-li-harden#9-optionally-reset-root-password "Goto details of the step")
-10. [On successfully completing above operations, display the following on screen:-](https://github.com/pratiktri/init-li-harden#10-display summary "Goto details of the step")
+10. [On successfully completing above operations, display the following on screen:-](https://github.com/pratiktri/init-li-harden#10-display-summary "Goto details of the step")
     * Username
     * User Password
     * SSH Private Key's path on the server
