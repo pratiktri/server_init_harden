@@ -286,24 +286,24 @@ This might not be desired, on future version you might find option to NOT show t
 The logfile is located in /tmp/ directory - thus will be removed server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen as well.
 
 # Todo
-- [x] Test - Debian 9.6 ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit"))
-- [x] Test - Debian 8.10 ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit"))
-- [x] Test - Ubuntu 14.04.5 ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit"))
-- [x] Test - Ubuntu 16.04.5 ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit"))
-- [x] Test - Ubuntu 18.04.5 ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit"))
-- [x] Test - Ubuntu 18.10 ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit"))
-- [ ] Test - Debian 9.6 ([Hetzner](https://www.hetzner.com/))
-- [ ] Test - Debian 8.10 ([Hetzner](https://www.hetzner.com/))
-- [ ] Test - Ubuntu 14.04.5 ([Hetzner](https://www.hetzner.com/))
-- [ ] Test - Ubuntu 16.04.5 ([Hetzner](https://www.hetzner.com/))
-- [ ] Test - Ubuntu 18.04.5 ([Hetzner](https://www.hetzner.com/))
-- [ ] Test - Ubuntu 18.10 ([Hetzner](https://www.hetzner.com/))
-- [ ] Test - Debian 9.6 ([OVH](https://www.ovh.com))
-- [ ] Test - Debian 8.10 ([OVH](https://www.ovh.com))
-- [ ] Test - Ubuntu 14.04.5 ([OVH](https://www.ovh.com))
-- [ ] Test - Ubuntu 16.04.5 ([OVH](https://www.ovh.com))
-- [ ] Test - Ubuntu 18.04.5 ([OVH](https://www.ovh.com))
-- [ ] Test - Ubuntu 18.10 ([OVH](https://www.ovh.com))
+- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Debian 9.6
+- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Debian 8.10
+- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 14.04.5
+- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 16.04.5
+- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 18.04.5
+- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 18.10
+- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Debian 9.6
+- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Debian 8.10
+- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 14.04.5
+- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 16.04.5
+- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 18.04.5
+- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 18.10
+- [ ] Test - ([OVH](https://www.ovh.com)) - Debian 9.6
+- [ ] Test - ([OVH](https://www.ovh.com)) - Debian 8.10
+- [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 14.04.5
+- [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 16.04.5
+- [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.04.5
+- [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.10
 - [ ] Test - How it behaves on repeat execution
 - [ ] On successful restoration - delete the bkp file
 - [ ] What to do if creating .bkp file fails?
