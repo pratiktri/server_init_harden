@@ -30,11 +30,11 @@ Alpha testing. NOT production ready.
 The script is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VPS) as *__root__*.
 
 ```bash
-bash <(wget -q https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh -O -) --help
+bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
 
-bash <(wget -q https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh -O -) --username someusername --resetrootpwd --defaultsourcelist
+bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --username someusername --resetrootpwd --defaultsourcelist
 
-bash <(wget -q https://raw.githubusercontent.com/pratiktri/init-li-harden/master/init-linux-harden.sh -O -) --quiet
+bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --quiet
 ```
 
 > There are inherent risks involved with running scripts directly (without reviewing it first) from web - as done above. Everyone does it anyways, but you have been warned.
@@ -45,7 +45,7 @@ Script performed the following operations:-
 1. [Create non-root user and give it "sudo" privilege](https://github.com/pratiktri/init-li-harden#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
 2. [Generate passphrage protected *ed25519* SSH Keys](https://github.com/pratiktri/init-li-harden#2-generate-passphrage-protected-ed25519-ssh-keys-private--public "Goto details of the step")
 3. [Secure "authorized_keys" file](https://github.com/pratiktri/init-li-harden#3-secure-authorized_keys-file "Goto details of the step")
-4. [[Optionally] Reset the url  for apt repo from VPS provided CDN to OS provided ones](https://github.com/pratiktri/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step")
+4. [[Optionally] Reset the url for apt repo from VPS provided CDN to OS provided ones](https://github.com/pratiktri/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step")
 5. [Update + Upgrade + Install softwares (sudo curl screen ufw fail2ban)](https://github.com/pratiktri/init-li-harden#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
 6. [Configure UFW](https://github.com/pratiktri/init-li-harden#6-configure-ufw "Goto details of the step")
 7. [Configure Fail2Ban](https://github.com/pratiktri/init-li-harden#7-configure-fail2ban "Goto details of the step")

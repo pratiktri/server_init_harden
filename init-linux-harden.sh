@@ -1,7 +1,8 @@
 #!/etc/bin/env bash
 
-SCRIPT_NAME=server_harden
-SCRIPT_VERSION=0.2
+SCRIPT_NAME=server_init_harden
+SCRIPT_VERSION=0.5
+
 LOGFILE=/tmp/"$SCRIPT_NAME"_v"$SCRIPT_VERSION".log
 # Reset previous log file
 TS=$(date '+%d_%m_%Y-%H_%M_%S')
@@ -19,9 +20,9 @@ CGREEN="${CSI}1;32m"
 # Usage
 ##############################################################
 # Script takes arguments as follows
-# init-linux-harden -username pratik --resetrootpwd
-# init-linux-harden -u pratik --resetrootpwd
-# init-linux-harden -username pratik --resetrootpwd -q
+# server_init_harden -username pratik --resetrootpwd
+# server_init_harden -u pratik --resetrootpwd
+# server_init_harden -username pratik --resetrootpwd -q
 
 function usage() {
     if [ -n "$1" ]; then
@@ -193,7 +194,7 @@ else
     printf "%3s Username you opted = %s\\n" " -" "$NORM_USER_NAME" | tee -a "$LOGFILE"
 fi
 if [[ "$DEFAULT_SOURCE_LIST" == "y" ]]; then
-    printf "%3s Use debian.org in /etc/apt/source.list file\\n" " -" | tee -a "$LOGFILE"
+    printf "%3s Reset the url for apt repo from VPS provided CDN to OS provided ones\\n" " -" | tee -a "$LOGFILE"
 fi
 if [[ "$RESET_ROOT_PWD" == "y" ]]; then
     printf "%3s Reset root password\\n" " -" | tee -a "$LOGFILE"
