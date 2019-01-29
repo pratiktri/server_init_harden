@@ -163,7 +163,10 @@ while [[ "$#" -gt 0 ]]; do
             shift
             ;;
         -h|--help)
+            echo
             usage
+            echo
+            exit 0
             shift
             ;;
         *)
