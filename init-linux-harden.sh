@@ -1,24 +1,5 @@
 #!/etc/bin/env bash
 
-# TODO - What to do if making .bkp file fails?
-# TODO - Test
-    # 1 - Deb 9.x
-    # 2 - Deb 8.x
-    # 3 - Ubuntu 14.x
-    # 4 - Ubuntu 16.x
-    # 5 - Ubuntu 18.x
-    # DigitalOcean
-    # OVH
-    # Hetzner
-    # How it behaves on repeat execution
-
-# TODO - fail2ban does not work on Ubuntu 14.04 => does NOT read the defaults-debian.conf file
-    # ssh with default values enabled - That is good for now though
-# TODO - Schedule daily system update
-# TODO - Enable LUKS (https://gitlab.com/cryptsetup/cryptsetup/as)
-# DNSCrypt
-# TODO - on successful restoration - delete the bkp file
-
 SCRIPT_NAME=server_harden
 SCRIPT_VERSION=0.2
 LOGFILE=/tmp/"$SCRIPT_NAME"_v"$SCRIPT_VERSION".log
