@@ -296,12 +296,12 @@ The logfile is located in /tmp/ directory - thus will be removed server reboots.
 - [x] Test - ([Hetzner](https://www.hetzner.com/)) - Debian 9
 - [x] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 16.04.5
 - [x] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 18.04.1
-- [ ] Test - ([OVH](https://www.ovh.com)) - Debian 9.6
-- [ ] Test - ([OVH](https://www.ovh.com)) - Debian 8.10
-- [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 14.04.5
-- [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 16.04.5
-- [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.04.5
-- [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.10
+- [x] Test - ([OVH](https://www.ovh.com)) - Debian 9
+- [x] Test - ([OVH](https://www.ovh.com)) - Debian 8
+- [x] Test - ([OVH](https://www.ovh.com)) - Ubuntu 14.04
+- [x] Test - ([OVH](https://www.ovh.com)) - Ubuntu 16.04
+- [x] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.04
+  
 - [ ] Test failures - Debian 9 - Step 1
 - [ ] Test failures - Debian 9 - Step 2
 - [ ] Test failures - Debian 9 - Step 3
@@ -311,6 +311,7 @@ The logfile is located in /tmp/ directory - thus will be removed server reboots.
 - [ ] Test failures - Debian 9 - Step 7
 - [ ] Test failures - Debian 9 - Step 8
 - [ ] Test failures - Debian 9 - Step 9
+
 - [ ] Test failures - Debian 8 - Step 1
 - [ ] Test failures - Debian 8 - Step 2
 - [ ] Test failures - Debian 8 - Step 3
@@ -320,6 +321,7 @@ The logfile is located in /tmp/ directory - thus will be removed server reboots.
 - [ ] Test failures - Debian 8 - Step 7
 - [ ] Test failures - Debian 8 - Step 8
 - [ ] Test failures - Debian 8 - Step 9
+  
 - [ ] Test failures - Ubuntu 14.04 - Step 1
 - [ ] Test failures - Ubuntu 14.04 - Step 2
 - [ ] Test failures - Ubuntu 14.04 - Step 3
@@ -329,6 +331,7 @@ The logfile is located in /tmp/ directory - thus will be removed server reboots.
 - [ ] Test failures - Ubuntu 14.04 - Step 7
 - [ ] Test failures - Ubuntu 14.04 - Step 8
 - [ ] Test failures - Ubuntu 14.04 - Step 9
+  
 - [ ] Test failures - Ubuntu 16.04 - Step 1
 - [ ] Test failures - Ubuntu 16.04 - Step 2
 - [ ] Test failures - Ubuntu 16.04 - Step 3
@@ -338,6 +341,7 @@ The logfile is located in /tmp/ directory - thus will be removed server reboots.
 - [ ] Test failures - Ubuntu 16.04 - Step 7
 - [ ] Test failures - Ubuntu 16.04 - Step 8
 - [ ] Test failures - Ubuntu 16.04 - Step 9
+  
 - [ ] Test failures - Ubuntu 18.04 - Step 1
 - [ ] Test failures - Ubuntu 18.04 - Step 2
 - [ ] Test failures - Ubuntu 18.04 - Step 3
@@ -350,13 +354,15 @@ The logfile is located in /tmp/ directory - thus will be removed server reboots.
 - [ ] Test - How it behaves on repeat execution
 
 ## Bug fixes
+- [ ] On successful restoration - delete the bkp files
 - [ ] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
 - [ ] What to do if creating .bkp file fails?
 - [ ] fail2ban does not work on Ubuntu 14.04 => does NOT read the defaults-debian.conf file.
 
-## Others
+## Add Features
 - [ ] Update README - provide example of how it can be used from an non-root account.
-- [ ] On successful restoration - delete the bkp files
+- [ ] Update README - Add some screen captures
+- [ ] New - Flag to NOT display credentials on screen
 - [ ] New - Schedule daily system update
 - [ ] New - Enable LUKS (is it even worth it???)
 - [ ] New - DNSCrypt
