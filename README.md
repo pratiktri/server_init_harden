@@ -286,28 +286,78 @@ This might not be desired, on future version you might find option to NOT show t
 The logfile is located in /tmp/ directory - thus will be removed server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen as well.
 
 # Todo
+## Testing
 - [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Debian 9.6
 - [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Debian 8.10
 - [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 14.04.5
 - [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 16.04.5
 - [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 18.04.5
 - [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 18.10
-- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Debian 9.6
-- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Debian 8.10
-- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 14.04.5
-- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 16.04.5
-- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 18.04.5
-- [ ] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 18.10
+- [x] Test - ([Hetzner](https://www.hetzner.com/)) - Debian 9
+- [x] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 16.04.5
+- [x] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 18.04.1
 - [ ] Test - ([OVH](https://www.ovh.com)) - Debian 9.6
 - [ ] Test - ([OVH](https://www.ovh.com)) - Debian 8.10
 - [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 14.04.5
 - [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 16.04.5
 - [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.04.5
 - [ ] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.10
+- [ ] Test failures - Debian 9 - Step 1
+- [ ] Test failures - Debian 9 - Step 2
+- [ ] Test failures - Debian 9 - Step 3
+- [ ] Test failures - Debian 9 - Step 4
+- [ ] Test failures - Debian 9 - Step 5
+- [ ] Test failures - Debian 9 - Step 6
+- [ ] Test failures - Debian 9 - Step 7
+- [ ] Test failures - Debian 9 - Step 8
+- [ ] Test failures - Debian 9 - Step 9
+- [ ] Test failures - Debian 8 - Step 1
+- [ ] Test failures - Debian 8 - Step 2
+- [ ] Test failures - Debian 8 - Step 3
+- [ ] Test failures - Debian 8 - Step 4
+- [ ] Test failures - Debian 8 - Step 5
+- [ ] Test failures - Debian 8 - Step 6
+- [ ] Test failures - Debian 8 - Step 7
+- [ ] Test failures - Debian 8 - Step 8
+- [ ] Test failures - Debian 8 - Step 9
+- [ ] Test failures - Ubuntu 14.04 - Step 1
+- [ ] Test failures - Ubuntu 14.04 - Step 2
+- [ ] Test failures - Ubuntu 14.04 - Step 3
+- [ ] Test failures - Ubuntu 14.04 - Step 4
+- [ ] Test failures - Ubuntu 14.04 - Step 5
+- [ ] Test failures - Ubuntu 14.04 - Step 6
+- [ ] Test failures - Ubuntu 14.04 - Step 7
+- [ ] Test failures - Ubuntu 14.04 - Step 8
+- [ ] Test failures - Ubuntu 14.04 - Step 9
+- [ ] Test failures - Ubuntu 16.04 - Step 1
+- [ ] Test failures - Ubuntu 16.04 - Step 2
+- [ ] Test failures - Ubuntu 16.04 - Step 3
+- [ ] Test failures - Ubuntu 16.04 - Step 4
+- [ ] Test failures - Ubuntu 16.04 - Step 5
+- [ ] Test failures - Ubuntu 16.04 - Step 6
+- [ ] Test failures - Ubuntu 16.04 - Step 7
+- [ ] Test failures - Ubuntu 16.04 - Step 8
+- [ ] Test failures - Ubuntu 16.04 - Step 9
+- [ ] Test failures - Ubuntu 18.04 - Step 1
+- [ ] Test failures - Ubuntu 18.04 - Step 2
+- [ ] Test failures - Ubuntu 18.04 - Step 3
+- [ ] Test failures - Ubuntu 18.04 - Step 4
+- [ ] Test failures - Ubuntu 18.04 - Step 5
+- [ ] Test failures - Ubuntu 18.04 - Step 6
+- [ ] Test failures - Ubuntu 18.04 - Step 7
+- [ ] Test failures - Ubuntu 18.04 - Step 8
+- [ ] Test failures - Ubuntu 18.04 - Step 9
 - [ ] Test - How it behaves on repeat execution
-- [ ] On successful restoration - delete the bkp file
+
+## Bug fixes
+- [ ] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
 - [ ] What to do if creating .bkp file fails?
-- [ ] Add another step to - Schedule daily system update
-- [ ] Add another step to - Enable LUKS (is it even worth it???)
-- [ ] Add another step to - DNSCrypt
 - [ ] fail2ban does not work on Ubuntu 14.04 => does NOT read the defaults-debian.conf file.
+
+## Others
+- [ ] Update README - provide example of how it can be used from an non-root account.
+- [ ] On successful restoration - delete the bkp files
+- [ ] New - Schedule daily system update
+- [ ] New - Enable LUKS (is it even worth it???)
+- [ ] New - DNSCrypt
+- [ ] New - Display time taken to complete all operations
