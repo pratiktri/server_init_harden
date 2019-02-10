@@ -1,6 +1,6 @@
 __Linux Server Hardener__ is a bash script that automates few of the tasks that you need to perform on a new Linux server to give it basic amount security.
 
-I wanted to change my VPS(Virtual Private Server) provider and was testing out many providers and many Linux flavours on those VPS. But before doing anything those servers needed to be given basic amount security and this involved a set of repetitive commands on terminal. Depending on network speed and number of mis-types, these took between 30-90 minutes to perform. 
+I wanted to change my VPS(Virtual Private Server) provider and was testing out many providers and many Linux flavours on those VPSes. But before doing anything those servers needed to be given basic amount security and this involved a set of repetitive commands on terminal. Depending on network speed and number of mis-types, these took between 30-90 minutes to perform. 
 
 This script is meant to save that time.
 
@@ -12,7 +12,7 @@ This script can potentially make your server inaccessible. Proceed with caution.
 
 Alpha testing. NOT production ready.
 
-# Getting Started
+# Usage
 
 ## Prerequisites
 
@@ -22,25 +22,44 @@ Alpha testing. NOT production ready.
   - Ubuntu 14.x
   - Ubuntu 16.x
   - Ubuntu 18.x
-* *wget* should be installed
+* *wget* should be installed (comes preinstalled on the above OSes anyways)
 * *root* access to the server
 
-## Usage
+## Examples
 
 The script is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VPS) as *__root__*.
 
 ```bash
-bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
-
 bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --username someusername --resetrootpwd --defaultsourcelist
 
 bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --quiet
 ```
 
-> There are inherent risks involved with running scripts directly (without reviewing it first) from web - as done above. Everyone does it anyways, but you have been warned.
+> There are inherent risks involved with running scripts directly (without reviewing it first) from web - as done above. Everyone does it anyways, but you have been warned. 
+
+## Available Options
+
+Run the script with below option to see all available options:-
+
+```bash
+bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
+
+Usage: sudo bash /dev/fd/63 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]
+  -u, --username            Username for your server (If omitted script will choose an username for you)
+  -r, --resetrootpwd        Reset current root password
+  -d, --defaultsourcelist   Updates /etc/apt/sources.list to download software from debian.org.
+                            NOTE - If you fail to update system after using it, you need to manually reset it. This script keeps a backup in the same folder.
+
+Example: bash ./server_init_harden.sh --username myuseraccount --resetrootpwd
+
+Below restrictions apply to username this script accepts - 
+   - [a-zA-Z0-9] [-] [_] are allowed
+   - NO special characters.
+   - NO spaces.
+```
 
 # What does it do ?
-Script performed the following operations:-
+Script performs the following operations:-
 
 1. [Create non-root user and give it "sudo" privilege](https://github.com/pratiktri/init-li-harden#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
 2. [Generate passphrage protected *ed25519* SSH Keys](https://github.com/pratiktri/init-li-harden#2-generate-passphrage-protected-ed25519-ssh-keys-private--public "Goto details of the step")
@@ -92,6 +111,8 @@ Script *tries* to recover from an error if it can determine that an error has oc
 ### 1. Create non-root user and give it "sudo" privilege
 You can specify your own username with "--username" or "-u" flag.
 
+If the username provided already exists, then the script will terminate without doing any operation.
+
 When accepting username through "--username", __*script actively rejects special characters in the name*__ because bash does not act well with special characters. The values accepted by the script [a-zA-Z0-9_-] i.e., alphanumeric and [_] and [-]
 
 If "--username" is not provided, __*script will randomly generate an username for you*__. Script generated usernames are 9 character long and are alphanumeric (i.e., numbers & English characters).
@@ -118,7 +139,7 @@ You need the following 3 to be able to access the server after the script is don
 * Private Key
 * Passphrase for the Key
 
- These 3 will be diplayed on screen at the end of the script. Copy them and __keep them safe. Without these won't be able to access the server.__
+ These 3 will be diplayed on screen at the end of the script. Copy them and __keep them safe. Without these you won't be able to access the server.__
 
 We use OpenSSH keyformat and ed25519 algorithm to generate ours. You can read the reason for that [here](https://security.stackexchange.com/questions/143442/what-are-ssh-keygen-best-practices#answer-144044) and [here](https://stribika.github.io/2015/01/04/secure-secure-shell.html). For additional security the key is secured by a passphrase. This passphrase is randomly generated. Passphrase are 15 character long and are alphanumeric. Algorithm used for user's password and SSH Private Key's passphrase are the same.
 
@@ -162,11 +183,11 @@ Following are the file access restrictions that the script applies:-
 
 ### 4. [Optionally] Reset the url  for apt repo from VPS provided CDN to OS provided ones
 
-Most VPS provider change the location from which operating system downloads software from (i.e. *apt* repository); usually to CDNs that are maintained by them. While, this greatly improves application installations, it does come with its security implications (what if they insert tracker in application?). 
+Most VPS provider change the location from which operating system downloads software from (i.e. *apt* repository); usually to CDNs that are maintained by them. While, this greatly improves time taken to install applications, it does come with its security implications (what if they insert tracker/sniffer in application?). 
 
-However, one can also argue that if the OS (i.e. Linux) itself is installed by the providers, then OS itself is a more likely place where they might want to insert something dirty.
+However, one can also argue that if the OS (i.e. Linux) is installed by the providers, then OS itself is a more likely place where they might want to insert something dirty.
 
-Depending on which argument you find valid, __you can use this option in the script to ensure the default OS provided CDNs are used__. This is done by updating the [/etc/apt/sources.list](https://linoxide.com/debian/configure-sources-list-debian-9/) file.
+Depending on which argument you find valid, __you can use this option in the script to ensure the default OS-provided CDNs are used__. This is done by updating the [/etc/apt/sources.list](https://linoxide.com/debian/configure-sources-list-debian-9/) file.
 
 If the script is started with --defaultsourcelist option, then for Debian http://deb.debian.org/debian is used and for Ubuntu http://archive.ubuntu.com/ubuntu/ is used.
 
@@ -217,14 +238,14 @@ This script sets up UFW so that only __ssh__(required for user login), __http__(
 
 
 ### 7. Configure Fail2Ban
-While UFW restrict access to ports, the ports that are required (and are allowed by UFW in above step) for our purpose can be exploited by nefarious actors.
+While UFW restricts access to ports, the ports that are required (and are allowed by UFW in above step) for our purpose can be exploited by nefarious actors.
 
 Fail2ban watches traffic coming through the allowed ports to determine if it is indeed a legitimate one. This determination is usually done by analyzing various *log files* being generated by Linux and other applications running on the server. If anything suspicious is found then after a certain number of illegitimate attempts the intruder(IP) is banned. Ban is then lifted after a desired amount of time.
 
 This script sets up Fail2ban as following:-
 * default ban time is 5 hours, 
 * Whitelists your server's IP from detection (uses https://ipinfo.io/ip to determine the IP),
-* sets (backend = polling). *polling* is an algoritm used to check if the *log files* are updated. This algorithm does not required any additional software and if no additional software are installed then is faster option to choose.
+* sets (backend = polling). *polling* is an algoritm used to check if the *log files* are updated. This algorithm does not require any additional software and is faster option to choose for our configuration.
 * Explicitly enables protection for *ssh* with (maxretry = 3) & (bantime = 2592000)
 
 #### Error Handling
@@ -240,7 +261,7 @@ This script sets up Fail2ban as following:-
 
   
 ### 8. Alter SSH options
-This step contines from step 3 to harden our ssh login. Here, we do edit */etc/ssh/sshd_config* file to achieve the following:-
+This step contines from step 3 to harden our ssh login. Here, we edit */etc/ssh/sshd_config* file to achieve the following:-
 * Disable *root* login (**PermitRootLogin no**). No one needs to work on *root*. The new user created already has *root* privileges anyways.
 * Disable password login (**PasswordAuthentication no**). This ensures we can ONLY login though SSH Keys.
 * Specify where to find authorized public keys which are granted login (\\.ssh\authorized_keys %h\\.ssh\authorized_keys)
@@ -260,7 +281,7 @@ This step contines from step 3 to harden our ssh login. Here, we do edit */etc/s
 
 
 ### 9. [Optionally] Reset root password
-Since, VPS providers sends you the password of your VPS's *root* user in email in plain text. So, password needs to be changed immediately. **Since we have disabled *root* login AND password login in the above step, changing *root* password might be an overkill**. But, still...
+Since, VPS providers sends you the password of your VPS's *root* user in email in plain text. So, password needs to be changed immediately. **But, since we have disabled *root* login AND password login in the above step, changing *root* password might be an overkill**. But, still...
 
 Also most VPS providers these days, allow you to provide SSH Public Key in their website. If you have done that you can skip this step. **It is disabled by default anyways**.
 
@@ -281,9 +302,11 @@ To change your *root* password provide option --resetrootpw. *root* password the
 ### 10. Display Summary
 All the generated username, passwords, SSH Key location & SSH Keys themselves are displayed on the screen.
 
-This might not be desired, on future version you might find option to NOT show the details and find them from the log file.
+This might not be desired (nosy neighbours), on future versions you might find option to NOT show the details on screen and find them from the log file.
 
-The logfile is located in /tmp/ directory - thus will be removed server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen as well.
+NOTE - while we login through SSH Keys, you will still be asked for your password (after logging in) while installing softwares and other operations. So, you NEED ALL of the information displayed on the screen.
+
+The logfile is located in /tmp/ directory - thus will be removed when server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen as well.
 
 # Todo
 ## Testing
@@ -351,19 +374,22 @@ The logfile is located in /tmp/ directory - thus will be removed server reboots.
 - [ ] Test failures - Ubuntu 18.04 - Step 7
 - [ ] Test failures - Ubuntu 18.04 - Step 8
 - [ ] Test failures - Ubuntu 18.04 - Step 9
+
 - [ ] Test - How it behaves on repeat execution
 
 ## Bug fixes
 - [ ] On successful restoration - delete the bkp files
 - [ ] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
-- [ ] What to do if creating .bkp file fails?
-- [ ] fail2ban does not work on Ubuntu 14.04 => does NOT read the defaults-debian.conf file.
+- [ ] What to do if creating .bkp file creation fails?
+- [ ] fail2ban does not work on Ubuntu 14.04 => does NOT have the defaults-debian.conf file.
 
-## Add Features
+## Roadmap
 - [ ] Update README - provide example of how it can be used from an non-root account.
+- [ ] Update README - Warn that - If your connection gets reset during this operation, you WILL loose all access to the server.
 - [ ] Update README - Add some screen captures
-- [ ] New - Flag to NOT display credentials on screen
+- [ ] New - Provide Flag - to NOT display credentials on screen (because - nosy neighbours)
 - [ ] New - Schedule daily system update
 - [ ] New - Enable LUKS (is it even worth it???)
 - [ ] New - DNSCrypt
 - [ ] New - Display time taken to complete all operations
+- [ ] Provide flag to ONLY create a new user (sudo???) - when script is already run and you just want to create another user
