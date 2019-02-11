@@ -378,12 +378,12 @@ The logfile is located in /tmp/ directory - thus will be removed when server reb
 - [x] Test - How it behaves on repeat execution
 
 ## Bug fixes
-- [ ] On successful restoration - delete the bkp files
-- [ ] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
-- [ ] What to do if creating .bkp file creation fails?
+- [x] ~~On successful restoration - delete the bkp files~~ Could be counter productive
+- [x] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
+- [x] What to do if creating .bkp file creation fails? Ans - fail that entire step
 - [ ] fail2ban does not work on Ubuntu 14.04 => does NOT have the defaults-debian.conf file.
 - [ ] Exception handle - when curl https://ipinfo.io/ip fails
-- [ ] Step 6 & 7 - Instead of checking if installation was successful or not - check if the the software we need is installed or not
+- [x] Step 6 & 7 - Instead of checking if installation was successful or not - check if the the software we need is installed or not
 
 ## Roadmap
 - [ ] Update README - provide example of how it can be used from an non-root account.
