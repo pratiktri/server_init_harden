@@ -10,7 +10,7 @@ This script can potentially make your server inaccessible. Proceed with caution.
 
 # Status
 
-Alpha testing. NOT production ready.
+Beta testing. NOT production ready.
 
 # Usage
 
@@ -325,68 +325,72 @@ The logfile is located in /tmp/ directory - thus will be removed when server reb
 - [x] Test - ([OVH](https://www.ovh.com)) - Ubuntu 16.04
 - [x] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.04
   
-- [ ] Test failures - Debian 9 - Step 1
-- [ ] Test failures - Debian 9 - Step 2
-- [ ] Test failures - Debian 9 - Step 3
-- [ ] Test failures - Debian 9 - Step 4
-- [ ] Test failures - Debian 9 - Step 5
-- [ ] Test failures - Debian 9 - Step 6
-- [ ] Test failures - Debian 9 - Step 7
-- [ ] Test failures - Debian 9 - Step 8
-- [ ] Test failures - Debian 9 - Step 9
+- [x] Test failures - Debian 9 - Step 1
+- [x] Test failures - Debian 9 - Step 2
+- [x] Test failures - Debian 9 - Step 3
+- [x] Test failures - Debian 9 - Step 4
+- [x] Test failures - Debian 9 - Step 5
+- [x] Test failures - Debian 9 - Step 6
+- [x] Test failures - Debian 9 - Step 7
+- [x] Test failures - Debian 9 - Step 8
+- [x] Test failures - Debian 9 - Step 9
 
-- [ ] Test failures - Debian 8 - Step 1
-- [ ] Test failures - Debian 8 - Step 2
-- [ ] Test failures - Debian 8 - Step 3
-- [ ] Test failures - Debian 8 - Step 4
-- [ ] Test failures - Debian 8 - Step 5
-- [ ] Test failures - Debian 8 - Step 6
-- [ ] Test failures - Debian 8 - Step 7
-- [ ] Test failures - Debian 8 - Step 8
-- [ ] Test failures - Debian 8 - Step 9
+- [x] Test failures - Debian 8 - Step 1
+- [x] Test failures - Debian 8 - Step 2
+- [x] Test failures - Debian 8 - Step 3
+- [x] Test failures - Debian 8 - Step 4
+- [x] Test failures - Debian 8 - Step 5
+- [x] Test failures - Debian 8 - Step 6
+- [x] Test failures - Debian 8 - Step 7
+- [x] Test failures - Debian 8 - Step 8
+- [x] Test failures - Debian 8 - Step 9
   
-- [ ] Test failures - Ubuntu 14.04 - Step 1
-- [ ] Test failures - Ubuntu 14.04 - Step 2
-- [ ] Test failures - Ubuntu 14.04 - Step 3
-- [ ] Test failures - Ubuntu 14.04 - Step 4
-- [ ] Test failures - Ubuntu 14.04 - Step 5
-- [ ] Test failures - Ubuntu 14.04 - Step 6
-- [ ] Test failures - Ubuntu 14.04 - Step 7
-- [ ] Test failures - Ubuntu 14.04 - Step 8
-- [ ] Test failures - Ubuntu 14.04 - Step 9
+- [x] Test failures - Ubuntu 14.04 - Step 1
+- [x] Test failures - Ubuntu 14.04 - Step 2
+- [x] Test failures - Ubuntu 14.04 - Step 3
+- [x] Test failures - Ubuntu 14.04 - Step 4
+- [x] Test failures - Ubuntu 14.04 - Step 5
+- [x] Test failures - Ubuntu 14.04 - Step 6
+- [x] Test failures - Ubuntu 14.04 - Step 7
+- [x] Test failures - Ubuntu 14.04 - Step 8
+- [x] Test failures - Ubuntu 14.04 - Step 9
   
-- [ ] Test failures - Ubuntu 16.04 - Step 1
-- [ ] Test failures - Ubuntu 16.04 - Step 2
-- [ ] Test failures - Ubuntu 16.04 - Step 3
-- [ ] Test failures - Ubuntu 16.04 - Step 4
-- [ ] Test failures - Ubuntu 16.04 - Step 5
-- [ ] Test failures - Ubuntu 16.04 - Step 6
-- [ ] Test failures - Ubuntu 16.04 - Step 7
-- [ ] Test failures - Ubuntu 16.04 - Step 8
-- [ ] Test failures - Ubuntu 16.04 - Step 9
+- [x] Test failures - Ubuntu 16.04 - Step 1
+- [x] Test failures - Ubuntu 16.04 - Step 2
+- [x] Test failures - Ubuntu 16.04 - Step 3
+- [x] Test failures - Ubuntu 16.04 - Step 4
+- [x] Test failures - Ubuntu 16.04 - Step 5
+- [x] Test failures - Ubuntu 16.04 - Step 6
+- [x] Test failures - Ubuntu 16.04 - Step 7
+- [x] Test failures - Ubuntu 16.04 - Step 8
+- [x] Test failures - Ubuntu 16.04 - Step 9
   
-- [ ] Test failures - Ubuntu 18.04 - Step 1
-- [ ] Test failures - Ubuntu 18.04 - Step 2
-- [ ] Test failures - Ubuntu 18.04 - Step 3
-- [ ] Test failures - Ubuntu 18.04 - Step 4
-- [ ] Test failures - Ubuntu 18.04 - Step 5
-- [ ] Test failures - Ubuntu 18.04 - Step 6
-- [ ] Test failures - Ubuntu 18.04 - Step 7
-- [ ] Test failures - Ubuntu 18.04 - Step 8
-- [ ] Test failures - Ubuntu 18.04 - Step 9
+- [x] Test failures - Ubuntu 18.04 - Step 1
+- [x] Test failures - Ubuntu 18.04 - Step 2
+- [x] Test failures - Ubuntu 18.04 - Step 3
+- [x] Test failures - Ubuntu 18.04 - Step 4
+- [x] Test failures - Ubuntu 18.04 - Step 5
+- [x] Test failures - Ubuntu 18.04 - Step 6
+- [x] Test failures - Ubuntu 18.04 - Step 7
+- [x] Test failures - Ubuntu 18.04 - Step 8
+- [x] Test failures - Ubuntu 18.04 - Step 9
 
-- [ ] Test - How it behaves on repeat execution
+- [x] Test - How it behaves on repeat execution
 
 ## Bug fixes
 - [ ] On successful restoration - delete the bkp files
 - [ ] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
 - [ ] What to do if creating .bkp file creation fails?
 - [ ] fail2ban does not work on Ubuntu 14.04 => does NOT have the defaults-debian.conf file.
+- [ ] Exception handle - when curl https://ipinfo.io/ip fails
+- [ ] Step 6 & 7 - Instead of checking if installation was successful or not - check if the the software we need is installed or not
 
 ## Roadmap
 - [ ] Update README - provide example of how it can be used from an non-root account.
 - [ ] Update README - Warn that - If your connection gets reset during this operation, you WILL loose all access to the server.
 - [ ] Update README - Add some screen captures
+- [ ] Update README - Detail all the locations where backup files would be created
+- [ ] Update README - Note that we never uninstall any software during restore operations
 - [ ] New - Provide Flag - to NOT display credentials on screen (because - nosy neighbours)
 - [ ] New - Schedule daily system update
 - [ ] New - Enable LUKS (is it even worth it???)

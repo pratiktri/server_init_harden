@@ -1,0 +1,137 @@
+Step 1 Failure > expectation
+    - Delete user + delete home directory
+    - Exit
+        - Ubuntu 14 
+            - Works as expected.
+            - Shows error & Revert status
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            - Works as expected
+        - Debian 9
+            - Works as expected
+
+Step 2 Failure > expectation
+    - Delete user + delete home directory
+    - Exit
+        - Ubuntu 14
+            - Works as expected
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            Works as expected
+        - Debian 9
+            - Works as expected
+
+Step 3 Failure > expectation
+    - Reset the attributes of "authorized_keys"
+    - Delete user + delete home directory
+    - Exit
+        - Ubuntu 14
+            - Works as expected
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            Works as expected
+        - Debian 9
+            - Works as expected
+
+Step 4 Failure > expectation
+    - Restore backup files in /etc/apt folder and sub-folders
+    - Differs for each provider (Hetzner specially)
+    - Script continues
+        - Ubuntu 14
+            - Works as expected
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            Works as expected
+        - Debian 9
+            - Works as expected
+
+Step 5 Failure > expectation
+    - Continue to Step 8
+        - Ubuntu 14
+            - Works as expected
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            Works as expected
+        - Debian 9
+            - Works as expected
+
+Step 6 Failure > expectation
+    - Disable UFW
+    - Continue to next Step
+        - Ubuntu 14
+            - Works as expected
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            Works as expected
+        - Debian 9
+            - Works as expected
+
+Step 7 Failure > expectation
+    - For 1st run of the script Restore /etc/fail2ban/jail.conf 
+    - For 2nd run of the script restore /etc/fail2ban/jail.local
+    - Restore /etc/fail2ban/jail.d/defaults-debian.conf file if present
+    - Continue to next step
+        - Ubuntu 14
+            - Works as expected
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            Works as expected
+        - Debian 9
+            - Works as expected
+
+Step 8 Failure > expectation
+    - Display that something did not complete successfully
+    - Continue to next step
+        - Ubuntu 14
+            - Works as expected
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            Works as expected
+        - Debian 9
+            - Works as expected
+
+
+Step 9 Failure > expectation
+    - Reset the attributes of "authorized_keys"
+    - Delete user + delete home directory
+    - [If opted] Restore backup files in /etc/apt folder and sub-folders
+    - Disable UFW
+    - For 1st run of the script Restore /etc/fail2ban/jail.conf 
+    - For 2nd run of the script restore /etc/fail2ban/jail.local
+    - Restore /etc/fail2ban/jail.d/defaults-debian.conf file if present
+    - Restore the /etc/ssh/sshd_config file
+    - Exit
+        - Ubuntu 14
+            - Works as expected
+        - Ubuntu 16 
+            - Works as expected.
+        - Ubuntu 18 
+            - Works as expected.
+        - Debian 8
+            Works as expected
+        - Debian 9
+            - Works as expected

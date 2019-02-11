@@ -1,7 +1,7 @@
 #!/etc/bin/env bash
 
-SCRIPT_NAME=server_init_harden
-SCRIPT_VERSION=0.5
+SCRIPT_NAME=linux_init_harden
+SCRIPT_VERSION=0.9
 
 LOGFILE=/tmp/"$SCRIPT_NAME"_v"$SCRIPT_VERSION".log
 # Reset previous log file
@@ -333,7 +333,6 @@ function error_restoring(){
 }
 
 function revert_create_user(){
-    local success;
     file_log "Reverting New User Creation..."
 
     # Remove user and its home directory only if user was created
@@ -342,108 +341,66 @@ function revert_create_user(){
             file_log "Deleting user ${NORM_USER_NAME} ..."
             deluser "$NORM_USER_NAME"
 
-            file_log "Removing the immutable flag from /home/${NORM_USER_NAME}/.ssh/ directory ..."
-            chattr -i /home/"$NORM_USER_NAME"/.ssh/*
-
             file_log "Deleting user ${NORM_USER_NAME} home directory and all its content ..."
             rm -rf /home/"${NORM_USER_NAME:?}"
-            success=$?
+            set_op_code $?
         } 2>> "$LOGFILE" >&2
-        success=$?
+        set_op_code $?
     fi
 
-    if [[ $success -eq 0 ]]; then
+    if [[ $OP_CODE -eq 0 ]]; then
         op_rev_log "Reverting - New User Creation" "SUCCESSFUL"
     else
         error_restoring "Reverting - New User Creation"
     fi
+
+    reset_op_code
 }
 
 function revert_create_ssh_key(){
-    local success;
-
     file_log "Reverting SSH Key Generation..."
     revert_create_user
-    success=$?
+    set_op_code $?
 
     # Since all SSH files are created inside the user's home directory
         # There is nothing to revert if username is deleted
 
-    if [[ $success -eq 0 ]]; then
+    if [[ $OP_CODE -eq 0 ]]; then
         op_rev_log "Reverting - SSH Key Generation" "SUCCESSFUL"
     else
         error_restoring "Reverting - SSH Key Generation"
     fi
+
+    reset_op_code
 }
 
 function revert_secure_authorized_key(){
-    local success;
+    file_log "Reverting SSH Key Authorizations..."
 
-    revert_create_ssh_key
-    file_log "Reverting SSH Key Authorization..."
-
-    if [[ -f "$SSH_DIR"/authorized_keys"$BACKUP_EXTENSION" ]]; then
-        unalias cp &>/dev/null
+    if [[ -f "$SSH_DIR"/authorized_keys ]]; then
         {
-            file_log "Removing immutable flag on the ${SSH_DIR}/authorized_keys file ..."
-            chattr -i "$SSH_DIR"/authorized_keys
+            file_log "Removing the immutable flag from every file in /home/${NORM_USER_NAME}/.ssh/ directory ..."
+            chattr -i "$SSH_DIR"/*
+            set_op_code $?
 
-            file_log "Restoring ${SSH_DIR}/authorized_keys${BACKUP_EXTENSION} into ${SSH_DIR}/authorized_keys ..."
-            cp -rf "$SSH_DIR"/authorized_keys"$BACKUP_EXTENSION" "$SSH_DIR"/authorized_keys
-            success=$?
-
-            file_log "Adding file access restriction (chmod 400) on the restored file ${SSH_DIR}/authorized_keys ..."
-            chmod 400 "$SSH_DIR"/authorized_keys
-
-            file_log "Adding file immutability restriction (chattr +i) on the restored file ${SSH_DIR}/authorized_keys ..."
-            chattr +i "$SSH_DIR"/authorized_keys
+            # Nothing else to restore since we are going to delete the user & its directories anyways
+            # All the files created/changed by the script are inside /home/[username]/.ssh directory only
         } 2>> "$LOGFILE" >&2
     fi
 
-    if [[ $success -eq 0 ]]; then
+    # Can remove the user only AFTER immutable attributes on authorized_keys is removed
+    revert_create_ssh_key
+
+    if [[ $OP_CODE -eq 0 ]]; then
         op_rev_log "Reverting - SSH Key Authorization" "SUCCESSFUL"
     else
         error_restoring "Reverting - SSH Key Authorization"
     fi
-}
 
-function revert_ssh_only_login(){
-    local success;
-
-    revert_secure_authorized_key
-    revert_config_UFW
-    revert_config_fail2ban
-    file_log "Reverting SSH-only Login..."
-
-    if [[ -f /etc/ssh/sshd_config"$BACKUP_EXTENSION" ]]; then
-        unalias cp &>/dev/null
-
-        file_log "Restoring /etc/ssh/sshd_config${BACKUP_EXTENSION} into /etc/ssh/sshd_config ..."
-        cp -rf /etc/ssh/sshd_config"$BACKUP_EXTENSION" /etc/ssh/sshd_config 2>> "$LOGFILE" >&2
-        success=$?
-    fi
-
-    file_log "Restarting ssh service ..."
-    {
-        success=$(service_action_and_chk_error "sshd" "restart")
-
-        if [[ $success -eq 0 ]]; then
-            false
-        fi
-    } || { 
-            # Because Ubuntu 14.04 does not have sshd
-            success=$(service_action_and_chk_error "ssh" "restart")
-        } 2>> "$LOGFILE" >&2
-
-    if [[ $success -eq 0 ]]; then
-        op_rev_log "Reverting - SSH-only Login" "SUCCESSFUL"
-    else
-        error_restoring "Reverting - SSH-only Login"
-    fi
+    reset_op_code
 }
 
 function revert_source_list_changes(){
-    local success;
     file_log "Reverting Source_list Changes..."
 
     unalias cp &>/dev/null
@@ -451,24 +408,26 @@ function revert_source_list_changes(){
     if [[ -f /etc/apt/sources.list"${BACKUP_EXTENSION}" ]]; then
         file_log "Restoring /etc/apt/sources.list${BACKUP_EXTENSION} into /etc/apt/sources.list ..."
         cp -rf /etc/apt/sources.list"${BACKUP_EXTENSION}" /etc/apt/sources.list 2>> "$LOGFILE" >&2
-        success=$?
+        set_op_code $?
     fi
 
-    SOURCE_FILES_BKP=(/etc/apt/source*/*.list"${BACKUP_EXTENSION}")
+    SOURCE_FILES_BKP=(/etc/apt/source*/*.list"$BACKUP_EXTENSION")
     if [[ ${#SOURCE_FILES_BKP[@]} -gt 0 ]]; then
-        for file in "${SOURCE_FILES[@]}";
+        for file in "${SOURCE_FILES_BKP[@]}";
         do
             file_log "Restoring ${file} into ${file//$BACKUP_EXTENSION/} ..."
             cp -rf "$file" "${file//$BACKUP_EXTENSION/}" 2>> "$LOGFILE" >&2
-            success=$?
+            set_op_code $?
         done
     fi
 
-    if [[ $success -eq 0 ]]; then
+    if [[ $OP_CODE -eq 0 ]]; then
         op_rev_log "Reverting - Source_list Changes" "SUCCESSFUL"
     else
         error_restoring "Reverting - Source_list Changes"
     fi
+
+    reset_op_code
 }
 
 function revert_root_pass_change(){
@@ -479,36 +438,43 @@ function revert_root_pass_change(){
 }
 
 function revert_config_UFW(){
-    local success;
     file_log "Reverting UFW Configuration..."
 
     ufw disable 2>> "$LOGFILE" >&2
-    success=$?
+    set_op_code $?
 
-    if [[ $success -eq 0 ]]; then
+    if [[ $OP_CODE -eq 0 ]]; then
         op_rev_log "Reverting - UFW Configuration" "SUCCESSFUL"
     else
         error_restoring "Reverting - UFW Configuration"
     fi
+
+    reset_op_code
 }
 
 function revert_config_fail2ban(){
-    local success;
-
     file_log "Reverting Fail2ban Config..."
 
     unalias cp &>/dev/null
 
     if [[ -f /etc/fail2ban/jail.local"$BACKUP_EXTENSION" ]]; then
-        file_log "Restoring /etc/fail2ban/jail.local${BACKUP_EXTENSION} into /etc/fail2ban/jail.local ..."
+        # If /etc/fail2ban/jail.local/_bkp exists then this is NOT the 1st time script is run
+        # So, you would probaly want to get the last existing jail.local file back
+        file_log "Restoring /etc/fail2ban/jail.local${BACKUP_EXTENSION} into /etc/fail2ban/jail.local"
         cp -rf /etc/fail2ban/jail.local"$BACKUP_EXTENSION" /etc/fail2ban/jail.local 2>> "$LOGFILE" >&2
-        success=$?
+        set_op_code $?
+    else
+        # If /etc/fail2ban/jail.local/_bkp does NOT exists then this IS the 1st time script is run
+        # You probably do NOT want the jail.local > which might be corrupted > which is why you are here
+        file_log "Removing /etc/fail2ban/jail.local as that might have been the culprit in this failure"
+        rm /etc/fail2ban/jail.local 2>> "$LOGFILE" >&2
+        set_op_code $?
     fi
 
     if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" ]]; then
-        file_log "Restoring /etc/fail2ban/jail.d/defaults-debian.conf${BACKUP_EXTENSION} into /etc/fail2ban/jail.d/defaults-debian.conf ..."
+        file_log "Restoring /etc/fail2ban/jail.d/defaults-debian.conf${BACKUP_EXTENSION} into /etc/fail2ban/jail.d/defaults-debian.conf"
         cp -rf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" /etc/fail2ban/jail.d/defaults-debian.conf 2>> "$LOGFILE" >&2
-        success=$?
+        set_op_code $?
     fi
 
     file_log "Stopping fail2ban service ..."
@@ -516,17 +482,60 @@ function revert_config_fail2ban(){
         set_op_code $(service_action_and_chk_error "fail2ban" "stop")
     } 2>> "$LOGFILE" >&2
 
-    if [[ $success -eq 0 ]]; then
+    if [[ $OP_CODE -eq 0 ]]; then
         op_rev_log "Reverting - Fail2ban Config" "SUCCESSFUL"
     else
         error_restoring "Reverting - Fail2ban Config"
     fi
+
+    reset_op_code
 }
 
 revert_software_installs(){
     echo
+    center_err_text "Error while installing softwares"
+    center_err_text "This may be a false-alarm"
+    center_err_text "Script will continue to next step"
     file_log "Installing software failed..."
     file_log "This is NOT a catastrophic error"
+}
+
+function revert_ssh_only_login(){
+    revert_secure_authorized_key
+    if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
+        revert_source_list_changes
+    fi
+    revert_config_UFW
+    revert_config_fail2ban
+
+
+    file_log "Reverting SSH-only Login..."
+
+    if [[ -f /etc/ssh/sshd_config"$BACKUP_EXTENSION" ]]; then
+        unalias cp &>/dev/null
+
+        file_log "Restoring /etc/ssh/sshd_config${BACKUP_EXTENSION} into /etc/ssh/sshd_config ..."
+        cp -rf /etc/ssh/sshd_config"$BACKUP_EXTENSION" /etc/ssh/sshd_config 2>> "$LOGFILE" >&2
+        set_op_code $?
+    fi
+
+    file_log "Restarting ssh service ..."
+    {
+        set_op_code $(service_action_and_chk_error "sshd" "restart")
+
+        if [[ $OP_CODE -eq 0 ]]; then
+            false
+        fi
+    } || { 
+            # Because Ubuntu 14.04 does not have sshd
+            set_op_code $(service_action_and_chk_error "ssh" "restart")
+        } 2>> "$LOGFILE" >&2
+
+    if [[ $OP_CODE -eq 0 ]]; then
+        op_rev_log "Reverting - SSH-only Login" "SUCCESSFUL"
+    else
+        error_restoring "Reverting - SSH-only Login"
+    fi
 }
 
 function finally(){
@@ -712,6 +721,7 @@ OP_TEXT=(
     "Changing root password" #8
 )
 
+
 ##############################################################
 # Step 1 - Create non-root user
 ##############################################################
@@ -742,6 +752,7 @@ if [[ $OP_CODE -eq 0 ]]; then
     update_event_status "${OP_TEXT[0]}" 2
     op_log "${OP_TEXT[0]}" "SUCCESSFUL"
 else
+    reset_op_code
     update_event_status "${OP_TEXT[0]}" 3
     op_log "${OP_TEXT[0]}" "FAILED"
     finally "${OP_TEXT[0]}"
@@ -757,52 +768,31 @@ reset_op_code
 update_event_status "${OP_TEXT[1]}" 1
 op_log "${OP_TEXT[1]}"
 {
-    shopt -s nullglob
-    # TODO - Below would capture bak files as well - filter out the bak files
-    KEY_FILES=("$SSH_DIR"/"$NORM_USER_NAME".pem*)
-
-    # If SSH files already exist - rename them to .timestamp_bkp
-    if [[ ${#KEY_FILES[@]} -gt 0 ]]; then
-        for key in "${KEY_FILES[@]}"; do
-            cp "$key" "$key""$BACKUP_EXTENSION"
-            set_op_code $?
-            file_log "SSH Key File exists ($key) - Making backup ($key$BACKUP_EXTENSION) of the existing file"
-        done
-    fi
-
     SSH_DIR=/home/"$NORM_USER_NAME"/.ssh
+    file_log "Creating SSH directory - $SSH_DIR"
     mkdir "$SSH_DIR"
     set_op_code $?
-    file_log "Created SSH directory - $SSH_DIR"
 
     # Generate a 15 character random password for key
+    file_log "Generating SSH Key Passphrase - ${KEY_PASS}"
     KEY_PASS="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
     set_op_code $?
-    file_log "Generated SSH Key Passphrase - ${KEY_PASS}"
 
     # Create a OpenSSH-compliant ed25519-type key
+    file_log "Generating SSH Key File - $SSH_DIR/$NORM_USER_NAME.pem"
     ssh-keygen -a 1000 -o -t ed25519 -N "$KEY_PASS" -C "$NORM_USER_NAME" -f "$SSH_DIR"/"$NORM_USER_NAME".pem -q
     set_op_code $?
-    file_log "Generated SSH Key File - $SSH_DIR/$NORM_USER_NAME.pem"
 
     # Copy the generated public file to authorized_keys
     cat "$SSH_DIR"/"$NORM_USER_NAME".pem.pub >> "$SSH_DIR"/authorized_keys
     set_op_code $?
-
-    # TODO - Below would capture bak files as well - filter out the bak files
-    # See if the files actually got created
-    KEY_FILES=("$SSH_DIR"/"$NORM_USER_NAME".pem*)
-    if [[ ${#KEY_FILES[@]} -eq 0 ]]; then
-        file_log "Unknown error occured."
-        file_log "Could not create SSH key files."
-        retun false
-    fi
 } 2>> "$LOGFILE" >&2
 
 if [[ $OP_CODE -eq 0 ]]; then
     update_event_status "${OP_TEXT[1]}" 2
     op_log "${OP_TEXT[1]}" "SUCCESSFUL"
 else
+    reset_op_code
     file_log "Creating SSH Key for new user failed."
     update_event_status "${OP_TEXT[1]}" 3
     op_log "${OP_TEXT[1]}" "FAILED"
@@ -820,28 +810,30 @@ update_event_status "${OP_TEXT[2]}" 1
 op_log "${OP_TEXT[2]}"
 {
     # Set appropriate permissions for ".ssh" dir and "authorized_key" file
+    file_log "Setting appropriate permissions for $SSH_DIR dir and $SSH_DIR/authorized_keys file"
     chown -R "$NORM_USER_NAME" "$SSH_DIR" && \
-    chgrp -R "$NORM_USER_NAME" "$SSH_DIR" && \
-    chmod 700 "$SSH_DIR" && \
-    chmod 400 "$SSH_DIR"/authorized_keys && \
-    chattr +i "$SSH_DIR"/authorized_keys
+        chgrp -R "$NORM_USER_NAME" "$SSH_DIR" && \
+        chmod 700 "$SSH_DIR" && \
+        chmod 400 "$SSH_DIR"/authorized_keys && \
+        chattr +i "$SSH_DIR"/authorized_keys
     set_op_code $?
-    file_log "Set appropriate permissions for $SSH_DIR dir and $SSH_DIR/authorized_keys file"
 
     # Restrict access to the generated SSH Key files as well
+    shopt -s nullglob
+    KEY_FILES=("$SSH_DIR"/"$NORM_USER_NAME".pem*)
     for key in "${KEY_FILES[@]}"; do
+        file_log "Restricting access (chmod 400 and chattr +i) to ${key} file"
         chmod 400 "$key" && \
-        chattr +i "$key"
+            chattr +i "$key"
         set_op_code $?
     done
-    file_log "Restrict access to the generated SSH Key files"
-    
 } 2>> "$LOGFILE" >&2
 
 if [[ $OP_CODE -eq 0 ]]; then
     update_event_status "${OP_TEXT[2]}" 2
     op_log "${OP_TEXT[2]}" "SUCCESSFUL"
 else
+    reset_op_code
     file_log "Setting restrictive permissions for '~/.ssh/' directory failed"
     file_log "Please do 'ls -lAh ~/.ssh/' and check manually to see what went wrong."
     update_event_status "${OP_TEXT[2]}" 3
@@ -861,15 +853,17 @@ if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
     update_event_status "${OP_TEXT[5]}" 1
     op_log "${OP_TEXT[4]}"
     {
+        file_log "Backing up /etc/apt/sources.list file to /etc/apt/sources.list${BACKUP_EXTENSION}"
         cp /etc/apt/sources.list /etc/apt/sources.list"${BACKUP_EXTENSION}"
         set_op_code $?
-        file_log "Backed up /etc/apt/sources.list file to /etc/apt/sources.list${BACKUP_EXTENSION}"
 
+        file_log "Commenting out everthing in /etc/apt/sources.list"
         sed -i "1,$(wc -l < /etc/apt/sources.list) s/^/#/" /etc/apt/sources.list
         set_op_code $?
-        file_log "Commented out everthing in /etc/apt/sources.list"
 
-if [[ $OS = "debian" ]]; then
+        if [[ $OS = "debian" ]]; then
+
+            file_log "Adding default CDN sources to /etc/apt/sources.list"
 
 # Default sources list for debian
 cat <<DEBIAN >> /etc/apt/sources.list
@@ -887,9 +881,9 @@ deb-src http://deb.debian.org/debian ${DEB_VER_STR}-updates main contrib non-fre
 deb http://deb.debian.org/debian ${DEB_VER_STR}-backports main contrib non-free
 deb-src http://deb.debian.org/debian ${DEB_VER_STR}-backports main contrib non-free
 DEBIAN
-        set_op_code $?
+            set_op_code $?
         
-elif [[ $OS = "ubuntu" ]]; then
+        elif [[ $OS = "ubuntu" ]]; then
 
 cat <<UBUNTU >> /etc/apt/sources.list
 deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
@@ -913,23 +907,21 @@ deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security universe
 deb http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security multiverse
 deb-src http://security.ubuntu.com/ubuntu ${UBT_VER_STR}-security multiverse
 UBUNTU
-        set_op_code $?
-        
-fi
-        file_log "Added default CDN sources to /etc/apt/sources.list"
+            set_op_code $?
+        fi
 
         # Find any additional sources listed by the provider and comment them out
         SOURCE_FILES=(/etc/apt/source*/*.list)
         if [[ ${#SOURCE_FILES[@]} -gt 0 ]]; then
             for file in "${SOURCE_FILES[@]}";
             do
+                file_log "Backing up ${file} file to ${file}${BACKUP_EXTENSION}"
                 cp "$file" "$file""${BACKUP_EXTENSION}"
                 set_op_code $?
-                file_log "Backed up ${file} file to ${file}${BACKUP_EXTENSION}"
 
+                file_log "Commenting out the ${file}"
                 sed -i "1,$(wc -l < "$file") s/^/#/" "$file"
                 set_op_code $?
-                file_log "Commented out the ${file}"
             done
         fi
     } 2>> "$LOGFILE" >&2
@@ -938,6 +930,7 @@ fi
         update_event_status "${OP_TEXT[4]}" 2
         op_log "${OP_TEXT[4]}" "SUCCESSFUL"
     else
+        reset_op_code
         update_event_status "${OP_TEXT[4]}" 3
         op_log "${OP_TEXT[4]}" "FAILED"
         revert_source_list_changes
@@ -963,6 +956,7 @@ if [[ $OP_CODE -eq 0 ]]; then
     update_event_status "${OP_TEXT[5]}" 2
     op_log "${OP_TEXT[5]}" "SUCCESSFUL"
 else
+    reset_op_code
     update_event_status "${OP_TEXT[5]}" 3
     op_log "${OP_TEXT[5]}" "FAILED"
     revert_software_installs
@@ -973,14 +967,20 @@ fi
 # Step 6 - Configure UFW
 ##############################################################
 
-# If install software failed - do not proceed
-if [[ $InstallReqSoftwares -eq 2 ]]; then
+# Check if UFW is installed
+ufw status 2>> /dev/null >&2 
+
+# Proceed only when UFW is installed
+if [[ $? -eq 0 ]]; then
     reset_op_code
     update_event_status "${OP_TEXT[6]}" 1
     op_log "${OP_TEXT[6]}"
     {
+        file_log "Setting ufw for ssh, http, https"
         ufw allow ssh && ufw allow http && ufw allow https 
         set_op_code $?
+
+        file_log "Enabling ufw"
         echo "y" | ufw enable
         set_op_code $?
     } 2>> "$LOGFILE" >&2
@@ -989,6 +989,7 @@ if [[ $InstallReqSoftwares -eq 2 ]]; then
         update_event_status "${OP_TEXT[6]}" 2
         op_log "${OP_TEXT[6]}" "SUCCESSFUL"
     else
+        reset_op_code
         update_event_status "${OP_TEXT[6]}" 3
         op_log "${OP_TEXT[6]}" "FAILED"
         revert_config_UFW
@@ -1003,48 +1004,57 @@ fi
 # Step 7 - Configure Fail2Ban
 ##############################################################
 
-# If install software failed - do not proceed
-if [[ $InstallReqSoftwares -eq 2 ]]; then
+# Proceed only when Fail2ban is installed
+if [[ $(dpkg -l | grep -c fail2ban) -gt 0 ]]; then
     reset_op_code
     update_event_status "${OP_TEXT[7]}" 1
     op_log "${OP_TEXT[7]}"
     {
         if [[ -f /etc/fail2ban/jail.local ]]; then
+            file_log "Backing up /etc/fail2ban/jail.local to /etc/fail2ban/jail.local${BACKUP_EXTENSION}"
             cp /etc/fail2ban/jail.local /etc/fail2ban/jail.local"$BACKUP_EXTENSION"
             set_op_code $?
         else
+            file_log "Copying /etc/fail2ban/jail.conf to /etc/fail2ban/jail.local"
             cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
             set_op_code $?
+
+            file_log "Backing up /etc/fail2ban/jail.conf to /etc/fail2ban/jail.conf${BACKUP_EXTENSION}"
             cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.conf"$BACKUP_EXTENSION"
             set_op_code $?
         fi
 
         # Do not do anything if copying jail.conf to jail.local failed
         if [[ -f /etc/fail2ban/jail.local ]]; then
-            # startline & endline - restrict the search to [DEFAULT] section
+            file_log "Determining your physical IP from https://ipinfo.io/ip"
             pub_ip=$(curl https://ipinfo.io/ip 2>> /dev/null) 
 
-            # Start search from the line that contains [DEFAULT] - end search before the line that contains # JAILS
+            # Start search from the line that contains "[DEFAULT]" - end search before the line that contains "# JAILS"
+            file_log "/etc/fail2ban/jail.local - Setting bantime = 18000"
             sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^bantime[[:blank:]]*= .*/bantime = 18000/" /etc/fail2ban/jail.local
             set_op_code $?
+
+            file_log "/etc/fail2ban/jail.local - Setting backend = polling"
             sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^backend[[:blank:]]*=.*/backend = polling/" /etc/fail2ban/jail.local
             set_op_code $?
+
+            file_log "/etc/fail2ban/jail.local - Setting ignoreip = 127.0.0.1/8 ::1 ${pub_ip}"
             sed -ri "/^\[DEFAULT\]$/,/^# JAILS$/ s/^ignoreip[[:blank:]]*=.*/ignoreip = 127.0.0.1\/8 ::1 ${pub_ip}/" /etc/fail2ban/jail.local
             set_op_code $?
-
-            # TODO- Exception handle - when curl https://ipinfo.io/ip fails
 
             # TODO - Exception handle 
                 # - No [DEFAULT] section present
                 # - no "bantime" or "backend" or "ignoreip" - options present
-                # But that is NOT very important - cause fail2ban defaults are sane anyways
+                # But that is not very important - cause fail2ban defaults are sane anyways
         fi
 
         if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf ]]; then
+            file_log "Backing up /etc/fail2ban/jail.d/defaults-debian.conf to /etc/fail2ban/jail.d/defaults-debian.conf${BACKUP_EXTENSION}"
             cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
             set_op_code $?
         fi
         
+        file_log "Enabling jails in /etc/fail2ban/jail.d/defaults-debian.conf"
 cat <<FAIL2BAN > /etc/fail2ban/jail.d/defaults-debian.conf
 [sshd]
 enabled = true
@@ -1063,14 +1073,15 @@ findtime = 86400                ; 1 days
 maxretry = 10
 FAIL2BAN
         set_op_code $?
-        set_op_code $(service_action_and_chk_error "fail2ban" "start")
 
+        set_op_code $(service_action_and_chk_error "fail2ban" "start")
     } 2>> "$LOGFILE" >&2
 
     if [[ $OP_CODE -eq 0 ]]; then
         update_event_status "${OP_TEXT[7]}" 2
         op_log "${OP_TEXT[7]}" "SUCCESSFUL"
     else
+        reset_op_code
         update_event_status "${OP_TEXT[7]}" 3
         op_log "${OP_TEXT[7]}" "FAILED"
         revert_config_fail2ban
@@ -1092,12 +1103,14 @@ if [[ $RESET_ROOT_PWD == 'y' ]]; then
     op_log "${OP_TEXT[8]}"
     {
         # Generate a 15 character random password
+        file_log "Generating roots new password..."
         PASS_ROOT="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
         set_op_code $?
 
-        file_log "Generated Root Password - ${PASS_ROOT}"
+        file_log "Generated root Password - ${PASS_ROOT}"
 
         # Change root's password
+        file_log "Setting the new root password"
         echo -e "${PASS_ROOT}\\n${PASS_ROOT}" | passwd
         set_op_code $?
     } 2>> "$LOGFILE" >&2
@@ -1106,7 +1119,7 @@ if [[ $RESET_ROOT_PWD == 'y' ]]; then
         update_event_status "${OP_TEXT[8]}" 2
         op_log "${OP_TEXT[8]}" "SUCCESSFUL"
     else
-        # Low priority - since we are disabling root login anyways
+        reset_op_code
         update_event_status "${OP_TEXT[8]}" 3
         op_log "${OP_TEXT[8]}" "FAILED"
         revert_root_pass_change
@@ -1200,25 +1213,26 @@ update_event_status "${OP_TEXT[3]}" 1
 op_log "${OP_TEXT[3]}"
 {
     # Backup the sshd_config file
+    file_log "Backing up /etc/ssh/sshd_config file to /etc/ssh/sshd_config$BACKUP_EXTENSION"
     cp /etc/ssh/sshd_config /etc/ssh/sshd_config"$BACKUP_EXTENSION"
     set_op_code $?
-    file_log "Backed up /etc/ssh/sshd_config file to /etc/ssh/sshd_config$BACKUP_EXTENSION"
 
     # Remove root login
+    file_log "Removing root login -> PermitRootLogin no"
     set_config_key "/etc/ssh/sshd_config" "PermitRootLogin" "no"
     set_op_code $?
-    file_log "Remove root login -> PermitRootLogin no"
 
     # Disable password login
+    file_log "Disabling password login -> PasswordAuthentication no"
     set_config_key "/etc/ssh/sshd_config" "PasswordAuthentication" "no"
     set_op_code $?
-    file_log "Disable password login -> PasswordAuthentication no"
 
     # Set SSH Authorization-Keys path
+    file_log "Setting SSH Authorization-Keys path -> AuthorizedKeysFile '%h\/\.ssh\/authorized_keys'"
     set_config_key "/etc/ssh/sshd_config" "AuthorizedKeysFile" '\.ssh\/authorized_keys %h\/\.ssh\/authorized_keys'
     set_op_code $?
-    file_log "Set SSH Authorization-Keys path -> AuthorizedKeysFile '%h\/\.ssh\/authorized_keys'"
 
+    file_log "Restarting ssh service..."
     { 
         set_op_code $(service_action_and_chk_error "sshd" "restart")
         if [[ $OP_CODE -eq 0 ]]; then
@@ -1234,6 +1248,7 @@ if [[ $OP_CODE -eq 0 ]]; then
     update_event_status "${OP_TEXT[3]}" 2
     op_log "${OP_TEXT[3]}" "SUCCESSFUL"
 else
+    reset_op_code
     file_log "Enabling SSH-only login failed."
     update_event_status "${OP_TEXT[3]}" 3
     op_log "${OP_TEXT[3]}" "FAILED"
