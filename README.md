@@ -41,8 +41,8 @@ bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/ma
 
 Run the script with below option to see all available options:-
 
-```bash
-bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
+```console
+root@host:~# bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
 
 Usage: sudo bash /dev/fd/63 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]
   -u, --username            Username for your server (If omitted script will choose an username for you)
@@ -309,73 +309,6 @@ NOTE - while we login through SSH Keys, you will still be asked for your passwor
 The logfile is located in /tmp/ directory - thus will be removed when server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen as well.
 
 # Todo
-## Testing
-- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Debian 9.6
-- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Debian 8.10
-- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 14.04.5
-- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 16.04.5
-- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 18.04.5
-- [x] Test - ([Digital Ocean](https://m.do.co/c/90b426e9b307 "Get $100 free credit")) - Ubuntu 18.10
-- [x] Test - ([Hetzner](https://www.hetzner.com/)) - Debian 9
-- [x] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 16.04.5
-- [x] Test - ([Hetzner](https://www.hetzner.com/)) - Ubuntu 18.04.1
-- [x] Test - ([OVH](https://www.ovh.com)) - Debian 9
-- [x] Test - ([OVH](https://www.ovh.com)) - Debian 8
-- [x] Test - ([OVH](https://www.ovh.com)) - Ubuntu 14.04
-- [x] Test - ([OVH](https://www.ovh.com)) - Ubuntu 16.04
-- [x] Test - ([OVH](https://www.ovh.com)) - Ubuntu 18.04
-  
-- [x] Test failures - Debian 9 - Step 1
-- [x] Test failures - Debian 9 - Step 2
-- [x] Test failures - Debian 9 - Step 3
-- [x] Test failures - Debian 9 - Step 4
-- [x] Test failures - Debian 9 - Step 5
-- [x] Test failures - Debian 9 - Step 6
-- [x] Test failures - Debian 9 - Step 7
-- [x] Test failures - Debian 9 - Step 8
-- [x] Test failures - Debian 9 - Step 9
-
-- [x] Test failures - Debian 8 - Step 1
-- [x] Test failures - Debian 8 - Step 2
-- [x] Test failures - Debian 8 - Step 3
-- [x] Test failures - Debian 8 - Step 4
-- [x] Test failures - Debian 8 - Step 5
-- [x] Test failures - Debian 8 - Step 6
-- [x] Test failures - Debian 8 - Step 7
-- [x] Test failures - Debian 8 - Step 8
-- [x] Test failures - Debian 8 - Step 9
-  
-- [x] Test failures - Ubuntu 14.04 - Step 1
-- [x] Test failures - Ubuntu 14.04 - Step 2
-- [x] Test failures - Ubuntu 14.04 - Step 3
-- [x] Test failures - Ubuntu 14.04 - Step 4
-- [x] Test failures - Ubuntu 14.04 - Step 5
-- [x] Test failures - Ubuntu 14.04 - Step 6
-- [x] Test failures - Ubuntu 14.04 - Step 7
-- [x] Test failures - Ubuntu 14.04 - Step 8
-- [x] Test failures - Ubuntu 14.04 - Step 9
-  
-- [x] Test failures - Ubuntu 16.04 - Step 1
-- [x] Test failures - Ubuntu 16.04 - Step 2
-- [x] Test failures - Ubuntu 16.04 - Step 3
-- [x] Test failures - Ubuntu 16.04 - Step 4
-- [x] Test failures - Ubuntu 16.04 - Step 5
-- [x] Test failures - Ubuntu 16.04 - Step 6
-- [x] Test failures - Ubuntu 16.04 - Step 7
-- [x] Test failures - Ubuntu 16.04 - Step 8
-- [x] Test failures - Ubuntu 16.04 - Step 9
-  
-- [x] Test failures - Ubuntu 18.04 - Step 1
-- [x] Test failures - Ubuntu 18.04 - Step 2
-- [x] Test failures - Ubuntu 18.04 - Step 3
-- [x] Test failures - Ubuntu 18.04 - Step 4
-- [x] Test failures - Ubuntu 18.04 - Step 5
-- [x] Test failures - Ubuntu 18.04 - Step 6
-- [x] Test failures - Ubuntu 18.04 - Step 7
-- [x] Test failures - Ubuntu 18.04 - Step 8
-- [x] Test failures - Ubuntu 18.04 - Step 9
-
-- [x] Test - How it behaves on repeat execution
 
 ## Bug fixes
 - [x] ~~On successful restoration - delete the bkp files~~ Could be counter productive
