@@ -228,12 +228,13 @@ OP_CODE=0
 CreateNonRootUser=0
 CreateSSHKey=0
 SecureAuthkeysfile=0
-EnableSSHOnly=0
 ChangeSourceList=0
 InstallReqSoftwares=0
 ConfigureUFW=0
 ConfigureFail2Ban=0
 ChangeRootPwd=0
+ScheduleUpdate=0
+EnableSSHOnly=0
 
 function set_op_code() {
     if [[ $OP_CODE -eq 0 ]] && [[ $1 -gt 0 ]]; then
@@ -283,6 +284,9 @@ function get_event_var_from_event() {
             ;;
         "${OP_TEXT[8]}")
             echo "ChangeRootPwd"
+            ;;
+        "${OP_TEXT[9]}")
+            echo "ScheduleUpdate"
             ;;
         *)
             false
@@ -491,13 +495,28 @@ function revert_config_fail2ban(){
     reset_op_code
 }
 
-revert_software_installs(){
+function revert_software_installs(){
     echo
     center_err_text "Error while installing softwares"
     center_err_text "This may be a false-alarm"
     center_err_text "Script will continue to next step"
     file_log "Installing software failed..."
     file_log "This is NOT a catastrophic error"
+}
+
+function revert_schedule_updates() {
+    file_log "Reverting Daily Update Download..."
+
+    rm $dailycron_filename
+    set_op_code $?
+
+    if [[ $OP_CODE -eq 0 ]]; then
+        op_rev_log "Reverting - Daily Update Download" "SUCCESSFUL"
+    else
+        error_restoring "Reverting - Daily Update Download"
+    fi
+
+    reset_op_code
 }
 
 function revert_ssh_only_login(){
@@ -507,7 +526,7 @@ function revert_ssh_only_login(){
     fi
     revert_config_UFW
     revert_config_fail2ban
-
+    revert_schedule_updates
 
     file_log "Reverting SSH-only Login..."
 
@@ -539,12 +558,15 @@ function revert_ssh_only_login(){
 }
 
 function finally(){
-    if [[ $CreateNonRootUser -eq 2 ]] && 
-        [[ $CreateSSHKey -eq 2 ]] && 
-        [[ $SecureAuthkeysfile -eq 2 ]] && 
-        [[ $EnableSSHOnly -eq 2 ]] &&
+    if [[ $CreateNonRootUser -eq 2 ]] &&
+        [[ $CreateSSHKey -eq 2 ]] &&
+        [[ $SecureAuthkeysfile -eq 2 ]] &&
         [[ $ChangeSourceList -eq 2 ]] &&
-        [[ $InstallReqSoftwares -eq 2 ]]; then
+        [[ $InstallReqSoftwares -eq 2 ]] &&
+        [[ $ConfigureUFW -le 2 ]] && # Since 0 (NO-OP) is still success
+        [[ $ConfigureFail2Ban -le 2 ]] && # Since 0 (NO-OP) is still success
+        [[ $ScheduleUpdate -eq 2 ]] &&
+        [[ $EnableSSHOnly -eq 2 ]]; then
         echo
         line_fill "$CHORIZONTAL" "$CLINESIZE"
         line_fill "$CHORIZONTAL" "$CLINESIZE"
@@ -596,10 +618,13 @@ function finally(){
 
     if [[ $ChangeSourceList -eq 3 ]] ||
        [[ $InstallReqSoftwares -eq 3 ]] ||
+       [[ $ConfigureUFW -eq 3 ]] ||
+       [[ $ConfigureFail2Ban -eq 3 ]]
+       [[ $ScheduleUpdate -eq 3 ]] &&
        [[ $ChangeRootPwd -eq 3 ]]; then
         center_err_text "Some operations failed..."
         center_err_text "These may NOT be catastrophic"
-        center_err_text "Please look at $LOGFILE for details"
+        center_err_text "Please check $LOGFILE file for details"
         revert_changes "$1"
         echo
     fi
@@ -719,6 +744,7 @@ OP_TEXT=(
     "Configure UFW" #6
     "Configure Fail2Ban" #7
     "Changing root password" #8
+    "Scheduling daily update download" #9
 )
 
 
@@ -1093,7 +1119,47 @@ fi
 
 
 ##############################################################
-# Step 8 - Change root's password
+# Step 8 - Schedule cron for daily system update
+##############################################################
+
+reset_op_code
+update_event_status "${OP_TEXT[9]}" 1
+
+op_log "${OP_TEXT[9]}"
+{
+    dailycron_filename=/etc/cron.daily/linux_init_harden_apt_update.sh
+
+    # Check if we created a schedule already
+    if [[ -f $dailycron_filename ]] ; then
+        true
+    else
+        # If not created already - create one into the file
+        file_log "Adding our schedule to the script file ${dailycron_filename}"
+        echo "#!/bin/sh" >> $dailycron_filename
+        echo 'apt-get update && apt-get -y -d upgrade' >> $dailycron_filename
+        set_op_code $?
+
+        file_log "Granting execute permission on ${dailycron_filename} file"
+        chmod +x $dailycron_filename
+        set_op_code $?
+    fi
+} 2>> "$LOGFILE" >&2
+
+if [[ $OP_CODE -eq 0 ]]; then
+    update_event_status "${OP_TEXT[9]}" 2
+    op_log "${OP_TEXT[9]}" "SUCCESSFUL"
+    file_log "NOTE - we only DOWNLOAD the updates"
+    file_log "\\t - to install use \"apt-get dist-upgrade\""
+else
+    reset_op_code
+    update_event_status "${OP_TEXT[9]}" 3
+    op_log "${OP_TEXT[9]}" "FAILED"
+    revert_schedule_updates
+fi
+
+
+##############################################################
+# Step 9 - Change root's password
 ##############################################################
 
 if [[ $RESET_ROOT_PWD == 'y' ]]; then
@@ -1128,7 +1194,7 @@ fi
 
 
 ##############################################################
-# Step 9 - Enable SSH-only login
+# Step 10 - Enable SSH-only login
 ##############################################################
 
 # TODO - Make this cleaner

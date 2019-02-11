@@ -68,12 +68,13 @@ Script performs the following operations:-
 5. [Update + Upgrade + Install softwares (sudo curl screen ufw fail2ban)](https://github.com/pratiktri/init-li-harden#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
 6. [Configure UFW](https://github.com/pratiktri/init-li-harden#6-configure-ufw "Goto details of the step")
 7. [Configure Fail2Ban](https://github.com/pratiktri/init-li-harden#7-configure-fail2ban "Goto details of the step")
-8. [Alter SSH options(/etc/ssh/sshd_config) to do the following:-](https://github.com/pratiktri/init-li-harden#8-alter-ssh-options "Goto details of the step")
+8. [Schedule cron for daily system update](https://github.com/pratiktri/init-li-harden#8-schedule-cron-for-daily-system-update "Goto details of the step")
+9.  [[Optionally] Reset *root* password](https://github.com/pratiktri/init-li-harden#9-optionally-reset-root-password "Goto details of the step")
+10. [Alter SSH options(/etc/ssh/sshd_config) to do the following:-](https://github.com/pratiktri/init-li-harden#10-alter-ssh-options "Goto details of the step")
    * Disable SSH login for *root* (PermitRootLogin no)
    * Disable SSH login through password for all users (PasswordAuthentication no) 
    * Updates path for *authoried_keys* file
-9. [[Optionally] Reset *root* password](https://github.com/pratiktri/init-li-harden#9-optionally-reset-root-password "Goto details of the step")
-10. [On successfully completing above operations, display the following on screen:-](https://github.com/pratiktri/init-li-harden#10-display-summary "Goto details of the step")
+11. [On successfully completing above operations, display the following on screen:-](https://github.com/pratiktri/init-li-harden#11-display-summary "Goto details of the step")
     * Username
     * User Password
     * SSH Private Key's path on the server
@@ -259,26 +260,24 @@ This script sets up Fail2ban as following:-
 > __After Error__ - Continue to next step after restoration.
 
 
-  
-### 8. Alter SSH options
-This step contines from step 3 to harden our ssh login. Here, we edit */etc/ssh/sshd_config* file to achieve the following:-
-* Disable *root* login (**PermitRootLogin no**). No one needs to work on *root*. The new user created already has *root* privileges anyways.
-* Disable password login (**PasswordAuthentication no**). This ensures we can ONLY login though SSH Keys.
-* Specify where to find authorized public keys which are granted login (\\.ssh\authorized_keys %h\\.ssh\authorized_keys)
 
+### 8. Schedule cron for daily system update
+While it is a bad idea to schedule automatic installation of updates ([read more here](https://debian-administration.org/article/162/A_short_introduction_to_cron-apt)), sizable amount of server administration time can be saved by *downloading* updates when no one is looking.
+
+In this step we schedule a daily crontab (/etc/cron.daily/linux_init_harden_apt_update.sh) to download updates. You would want to manually do the installation running the below command.
+
+```bash
+sudo apt-get dist-upgrade
+```
 #### Error Handling
 
-> __Failure Impact__ - Potentially __CATASTROPHIC__.
+> __Failure Impact__ - Minimal. No auto download of software updates
 > 
-> __Restoration__ - Delete user and its home directory; Disable UFW: If back up of /etc/fail2ban/jail.local file found, then that is restored; else back up of /etc/fail2ban/jail.conf is restored. Also, back up of /etc/fail2ban/jail.d/defaults-debian.conf file restored if available. Restore the /etc/ssh/sshd_config file from backup file created before the operation.
+> __Restoration__ - Remove the script file (/etc/cron.daily/linux_init_harden_apt_update.sh).
 > 
-> __Impact of Restoration Failure__ - Fatal. DO NOT logout of the session. If you do then, you may not be able to log back in. Check the log file to see what went wrong. Issue the following command and see what is the out put. Search the error message on internet for solution.
-> ```bash
-> # service sshd restart
-> ```
-> __After Error__ - Script will be terminated.
-
-
+> __Impact of Restoration Failure__ - The cron job might execute once a day and *fail*. You might have to manually delete the file (/etc/cron.daily/linux_init_harden_apt_update.sh) manually.
+> 
+> __After Error__ - Continue to next step.
 
 ### 9. [Optionally] Reset root password
 Since, VPS providers sends you the password of your VPS's *root* user in email in plain text. So, password needs to be changed immediately. **But, since we have disabled *root* login AND password login in the above step, changing *root* password might be an overkill**. But, still...
@@ -298,6 +297,26 @@ To change your *root* password provide option --resetrootpw. *root* password the
 > __After Error__ - Continue to next step.
 
 
+  
+### 10. Alter SSH options
+This step contines from step 3 to harden our ssh login. Here, we edit */etc/ssh/sshd_config* file to achieve the following:-
+* Disable *root* login (**PermitRootLogin no**). No one needs to work on *root*. The new user created already has *root* privileges anyways.
+* Disable password login (**PasswordAuthentication no**). This ensures we can ONLY login though SSH Keys.
+* Specify where to find authorized public keys which are granted login (\\.ssh\authorized_keys %h\\.ssh\authorized_keys)
+
+#### Error Handling
+
+> __Failure Impact__ - Potentially __CATASTROPHIC__.
+> 
+> __Restoration__ - Delete user and its home directory; Disable UFW: If back up of /etc/fail2ban/jail.local file found, then that is restored; else back up of /etc/fail2ban/jail.conf is restored. Also, back up of /etc/fail2ban/jail.d/defaults-debian.conf file restored if available. Restore the /etc/ssh/sshd_config file from backup file created before the operation.
+> 
+> __Impact of Restoration Failure__ - Fatal. DO NOT logout of the session. If you do then, you may not be able to log back in. Check the log file to see what went wrong. Issue the following command and see what is the out put. Search the error message on internet for solution.
+> ```bash
+> # service sshd restart
+> ```
+> __After Error__ - Script will be terminated.
+
+
 
 ### 10. Display Summary
 All the generated username, passwords, SSH Key location & SSH Keys themselves are displayed on the screen.
@@ -311,9 +330,9 @@ The logfile is located in /tmp/ directory - thus will be removed when server reb
 # Todo
 
 ## Bug fixes
-- [x] ~~On successful restoration - delete the bkp files~~ Could be counter productive
+- [x] ~~On successful restoration - delete the bkp files~~ (Abandoned - as it could be counter productive)
 - [x] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
-- [x] What to do if creating .bkp file creation fails? Ans - fail that entire step
+- [x] What to do if creating .bkp file fails? Ans - fail that entire step
 - [ ] fail2ban does not work on Ubuntu 14.04 => does NOT have the defaults-debian.conf file.
 - [ ] Exception handle - when curl https://ipinfo.io/ip fails
 - [x] Step 6 & 7 - Instead of checking if installation was successful or not - check if the the software we need is installed or not
@@ -325,7 +344,7 @@ The logfile is located in /tmp/ directory - thus will be removed when server reb
 - [ ] Update README - Detail all the locations where backup files would be created
 - [ ] Update README - Note that we never uninstall any software during restore operations
 - [ ] New - Provide Flag - to NOT display credentials on screen (because - nosy neighbours)
-- [ ] New - Schedule daily system update
+- [x] New - Schedule daily system update downloads
 - [ ] New - Enable LUKS (is it even worth it???)
 - [ ] New - DNSCrypt
 - [ ] New - Display time taken to complete all operations
