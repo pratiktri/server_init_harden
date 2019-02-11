@@ -343,7 +343,7 @@ The logfile is located in /tmp/ directory - thus will be removed when server reb
 - [ ] Update README - Add some screen captures
 - [ ] Update README - Detail all the locations where backup files would be created
 - [ ] Update README - Note that we never uninstall any software during restore operations
-- [ ] New - Provide Flag - to NOT display credentials on screen (because - nosy neighbours)
+- [x] New - Provide Flag - to NOT display credentials on screen (because - nosy neighbours)
 - [x] New - Schedule daily system update downloads
 - [ ] New - Enable LUKS (is it even worth it???)
 - [ ] New - DNSCrypt

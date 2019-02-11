@@ -19,10 +19,11 @@ CGREEN="${CSI}1;32m"
 ##############################################################
 # Usage
 ##############################################################
+
 # Script takes arguments as follows
-# server_init_harden -username pratik --resetrootpwd
-# server_init_harden -u pratik --resetrootpwd
-# server_init_harden -username pratik --resetrootpwd -q
+# linux_init_harden -username pratik --resetrootpwd
+# linux_init_harden -u pratik --resetrootpwd
+# linux_init_harden -username pratik --resetrootpwd -q -hide
 
 function usage() {
     if [ -n "$1" ]; then
@@ -31,10 +32,11 @@ function usage() {
     fi
 
     echo "Usage: sudo bash $0 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]"
-    echo "  -u, --username            Username for your server (If omitted script will choose an username for you)"
-    echo "  -r, --resetrootpwd        Reset current root password"
-    echo "  -d, --defaultsourcelist   Updates /etc/apt/sources.list to download software from debian.org."
-    echo "                            NOTE - If you fail to update system after using it, you need to manually reset it. This script keeps a backup in the same folder."
+    echo "  -u, --username              Username for your server (If omitted script will choose an username for you)"
+    echo "  -r, --resetrootpwd          Reset current root password"
+    echo "  -hide, --hide-credentials   Credentials will hidden from the screen and can ONLY be found in the logfile (tail -n 20 logfile)"
+    echo "  -d, --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org"
+    echo "                              NOTE - If you fail to update system after using it, you need to manually reset it. This script keeps a backup in the same folder"
 
     echo ""
     echo "Example: bash ./$SCRIPT_NAME.sh --username myuseraccount --resetrootpwd"
@@ -112,6 +114,7 @@ AUTO_GEN_USERNAME="y"
 RESET_ROOT_PWD="n"
 DEFAULT_SOURCE_LIST="n"
 QUIET="n"
+HIDE_CREDENTIALS="n"
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -142,6 +145,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         -q|--quiet|--nowait|--noprompt)
             QUIET="y"
+            shift
+            ;;
+        -hide|--hide-credentials)
+            HIDE_CREDENTIALS="y"
             shift
             ;;
         -h|--help)
@@ -198,6 +205,10 @@ if [[ "$DEFAULT_SOURCE_LIST" == "y" ]]; then
 fi
 if [[ "$RESET_ROOT_PWD" == "y" ]]; then
     printf "%3s Reset root password\\n" " -" | tee -a "$LOGFILE"
+fi
+if [[ $HIDE_CREDENTIALS == "y" ]]; then
+    printf "%3s Credentials WILL NOT be displayed on screen\\n" " -" | tee -a "$LOGFILE"
+    printf "%3s Credentials can be found in the logfile ${LOGFILE}\\n" " -" | tee -a "$LOGFILE"
 fi
 if [[ "$QUIET" == "y" ]]; then
     printf "%3s No prompt installation selected\\n\\n" " -" | tee -a "$LOGFILE"
@@ -561,7 +572,7 @@ function finally(){
     if [[ $CreateNonRootUser -eq 2 ]] &&
         [[ $CreateSSHKey -eq 2 ]] &&
         [[ $SecureAuthkeysfile -eq 2 ]] &&
-        [[ $ChangeSourceList -eq 2 ]] &&
+        [[ $ChangeSourceList -le 2 ]] && # Since 0 (NO-OP) is still success
         [[ $InstallReqSoftwares -eq 2 ]] &&
         [[ $ConfigureUFW -le 2 ]] && # Since 0 (NO-OP) is still success
         [[ $ConfigureFail2Ban -le 2 ]] && # Since 0 (NO-OP) is still success
@@ -592,6 +603,11 @@ function finally(){
         [[ $EnableSSHOnly -eq 3 ]]; then
         return 1
     else
+        file_log ""
+        file_log ""
+        file_log ""
+        file_log ""
+
         line_fill "$CHORIZONTAL" "$CLINESIZE"
         recap "User Name" "$CreateNonRootUser" "$NORM_USER_NAME"
         recap "User's Password" "$CreateNonRootUser" "$USER_PASS"
@@ -627,6 +643,11 @@ function finally(){
         center_err_text "Please check $LOGFILE file for details"
         revert_changes "$1"
         echo
+    fi
+
+    if [[ $HIDE_CREDENTIALS == "y" ]]; then
+        center_reg_text "Issue the following command to see all credentials"
+        center_reg_text "tail -n 20 ${LOGFILE}"
     fi
 }
 
@@ -705,33 +726,38 @@ function recap (){
     local value=$3
 
     if [[ $status -eq 0 ]]; then
-        file_log "${purpose}: Did not start this operation. See log above."
+        echo "${purpose}: Did not start this operation. See log above." 2>> ${LOGFILE} >&2
         value="[${CGREEN}--NO_OP--${CEND}]"
     elif [[ $status -eq 2 ]]; then
-        file_log "${purpose}: ${value}"
+        echo "${purpose}: ${value}" 2>> ${LOGFILE} >&2
         value="[${CGREEN}${value}${CEND}]"
     elif [[ $status -eq 1 ]] || [[ $status -eq 3 ]]; then
-        file_log "${purpose}: ERROR. See log above."
+        echo "${purpose}: ERROR. See log above." 2>> ${LOGFILE} >&2
         value="${CRED}--ERROR--${CEND}"
     fi
 
-    horizontal_fill "$CVERTICAL" 1
-    printf "%23s:%3s%-54s" "$purpose" " " "$(echo -e "$value")"
-    line_fill "$CVERTICAL" 1
+    if [[ $HIDE_CREDENTIALS == "n" ]]; then
+        horizontal_fill "$CVERTICAL" 1
+        printf "%23s:%3s%-54s" "$purpose" " " "$(echo -e "$value")"
+        line_fill "$CVERTICAL" 1
+    fi    
 }
 
 function recap_file_content(){
     local file_type=$1
     local file_location=$2
-    echo
 
-    center_reg_text "$file_type"
     file_log "$file_type"
-    echo
-    printf "${CGREEN}"
-    cat "$file_location"
     cat "$file_location" 2>> "$LOGFILE" >&2
-    printf "${CEND}"
+
+    if [[ $HIDE_CREDENTIALS == "n" ]]; then
+        echo
+        center_reg_text "$file_type"
+        echo
+        printf "${CGREEN}"
+        cat "$file_location"
+        printf "${CEND}"
+    fi
 }
 
 OP_TEXT=(
