@@ -226,7 +226,7 @@ fi
 
 
 ##############################################################
-# Error Handling
+# Op-tech & Utility Functions
 ##############################################################
 
 OP_CODE=0
@@ -247,6 +247,19 @@ ChangeRootPwd=0
 ScheduleUpdate=0
 EnableSSHOnly=0
 
+OP_TEXT=(
+    "Creating new user" #0
+    "Creating SSH Key for new user" #1
+    "Securing 'authorized_keys' file" #2
+    "Enabling SSH-only login" #3
+    "Reset sources.list to defaults" #4
+    "Installing required softwares" #5
+    "Configure UFW" #6
+    "Configure Fail2Ban" #7
+    "Changing root password" #8
+    "Scheduling daily update download" #9
+)
+
 function set_op_code() {
     if [[ $OP_CODE -eq 0 ]] && [[ $1 -gt 0 ]]; then
         OP_CODE=$1
@@ -257,14 +270,15 @@ function reset_op_code(){
     OP_CODE=0
 }
 
-function service_action_and_chk_error() {
-    local servicename=$1
-    local serviceaction=$2
-    local servicemsg
+function update_event_status() {
+    local event
+    event=$(get_event_var_from_event "$1")
+    eval "$event"="$2"
+}
 
-    servicemsg=$(service "$servicename" "$serviceaction" 2>&1)
-    file_log "$servicemsg"
-    return $(echo "$servicemsg" | grep -c 'ERROR')
+function get_event_status() {
+    local event=get_event_var_from_event "$1"
+    return ${!event}
 }
 
 function get_event_var_from_event() {
@@ -305,16 +319,83 @@ function get_event_var_from_event() {
     esac
 }
 
-function update_event_status() {
-    local event
-    event=$(get_event_var_from_event "$1")
-    eval "$event"="$2"
+function service_action_and_chk_error() {
+    local servicename=$1
+    local serviceaction=$2
+    local servicemsg
+
+    servicemsg=$(service "$servicename" "$serviceaction" 2>&1)
+    file_log "$servicemsg"
+    return $(echo "$servicemsg" | grep -c 'ERROR')
 }
 
-function get_event_status() {
-    local event=get_event_var_from_event "$1"
-    return ${!event}
+function finally(){
+    if [[ $CreateNonRootUser -eq 2 ]] &&
+        [[ $CreateSSHKey -eq 2 ]] &&
+        [[ $SecureAuthkeysfile -eq 2 ]] &&
+        [[ $ChangeSourceList -le 2 ]] && # Since 0 (NO-OP) is still success
+        [[ $InstallReqSoftwares -eq 2 ]] &&
+        [[ $ConfigureUFW -le 2 ]] && # Since 0 (NO-OP) is still success
+        [[ $ConfigureFail2Ban -le 2 ]] && # Since 0 (NO-OP) is still success
+        [[ $ScheduleUpdate -eq 2 ]] &&
+        [[ $EnableSSHOnly -eq 2 ]]; then
+        echo
+        line_fill "$CHORIZONTAL" "$CLINESIZE"
+        line_fill "$CHORIZONTAL" "$CLINESIZE"
+        center_reg_text "ALL OPERATIONS COMPLETED SUCCESSFULLY"
+    fi
+    
+    #Recap
+    file_log ""
+    file_log ""
+    file_log ""
+    file_log ""
+
+    line_fill "$CHORIZONTAL" "$CLINESIZE"
+    recap "User Name" "$CreateNonRootUser" "$NORM_USER_NAME"
+    recap "User's Password" "$CreateNonRootUser" "$USER_PASS"
+    recap "SSH Private Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem
+    recap "SSH Public Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
+    recap "SSH Key Passphrase" "$CreateSSHKey" "$KEY_PASS"    
+    if [[ "$RESET_ROOT_PWD" == "y" ]]; then
+        recap "New root Password" "$ChangeRootPwd" "$PASS_ROOT"
+    fi
+    line_fill "$CHORIZONTAL" "$CLINESIZE"
+
+    recap_file_content "SSH Private Key" "$SSH_DIR"/"$NORM_USER_NAME".pem
+    recap_file_content "SSH Public Key" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
+    
+    line_fill "$CHORIZONTAL" "$CLINESIZE"
+    center_reg_text "!!! DO NOT LOG OUT JUST YET !!!"
+    center_reg_text "Use another window to test out the above credentials"
+    center_reg_text "If you face issue logging in look at the log file to see what went wrong"
+    center_reg_text "Log file at ${LOGFILE}"
+
+    line_fill "$CHORIZONTAL" "$CLINESIZE"
+    echo
+
+    if [[ $ChangeSourceList -eq 3 ]] ||
+       [[ $InstallReqSoftwares -eq 3 ]] ||
+       [[ $ConfigureUFW -eq 3 ]] ||
+       [[ $ConfigureFail2Ban -eq 3 ]]
+       [[ $ScheduleUpdate -eq 3 ]] &&
+       [[ $ChangeRootPwd -eq 3 ]]; then
+        center_err_text "Some operations failed..."
+        center_err_text "These may NOT be catastrophic"
+        center_err_text "Please check $LOGFILE file for details"
+        echo
+    fi
+
+    if [[ $HIDE_CREDENTIALS == "y" ]]; then
+        center_reg_text "Issue the following command to see all credentials"
+        center_reg_text "tail -n 20 ${LOGFILE}"
+    fi
 }
+
+
+##############################################################
+# Error Handling
+##############################################################
 
 function revert_changes(){
     file_log "Starting revert operation..."
@@ -568,87 +649,15 @@ function revert_ssh_only_login(){
     fi
 }
 
-function finally(){
-    if [[ $CreateNonRootUser -eq 2 ]] &&
-        [[ $CreateSSHKey -eq 2 ]] &&
-        [[ $SecureAuthkeysfile -eq 2 ]] &&
-        [[ $ChangeSourceList -le 2 ]] && # Since 0 (NO-OP) is still success
-        [[ $InstallReqSoftwares -eq 2 ]] &&
-        [[ $ConfigureUFW -le 2 ]] && # Since 0 (NO-OP) is still success
-        [[ $ConfigureFail2Ban -le 2 ]] && # Since 0 (NO-OP) is still success
-        [[ $ScheduleUpdate -eq 2 ]] &&
-        [[ $EnableSSHOnly -eq 2 ]]; then
-        echo
-        line_fill "$CHORIZONTAL" "$CLINESIZE"
-        line_fill "$CHORIZONTAL" "$CLINESIZE"
-        center_reg_text "ALL OPERATIONS COMPLETED SUCCESSFULLY"
-    fi
+function revert_everything_and_exit() {
+    echo
+    center_err_text "!!! ERROR OCCURED DURING OPERATION !!!"
+    center_err_text "!!! Reverting changes !!!"
+    center_err_text "Please look at $LOGFILE for details"
+    echo
+    revert_changes "$1"
 
-    # If something failed - try to revert things back
-    if [[ "$#" -gt 0 ]]; then
-        echo
-        center_err_text "!!! ERROR OCCURED DURING OPERATION !!!"
-        center_err_text "!!! Reverting changes !!!"
-        center_err_text "Please look at $LOGFILE for details"
-        echo
-        revert_changes "$1"
-
-        # If restoration failed - well you are f**ked
-    fi
-    
-    #Recap ONLY if NO IMPORTANT operations reverted
-    if [[ $CreateNonRootUser -eq 3 ]] || 
-        [[ $CreateSSHKey -eq 3 ]] || 
-        [[ $SecureAuthkeysfile -eq 3 ]] || 
-        [[ $EnableSSHOnly -eq 3 ]]; then
-        return 1
-    else
-        file_log ""
-        file_log ""
-        file_log ""
-        file_log ""
-
-        line_fill "$CHORIZONTAL" "$CLINESIZE"
-        recap "User Name" "$CreateNonRootUser" "$NORM_USER_NAME"
-        recap "User's Password" "$CreateNonRootUser" "$USER_PASS"
-        recap "SSH Private Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem
-        recap "SSH Public Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
-        recap "SSH Key Passphrase" "$CreateSSHKey" "$KEY_PASS"    
-        if [[ "$RESET_ROOT_PWD" == "y" ]]; then
-            recap "New root Password" "$ChangeRootPwd" "$PASS_ROOT"
-        fi
-        line_fill "$CHORIZONTAL" "$CLINESIZE"
-
-        recap_file_content "SSH Private Key" "$SSH_DIR"/"$NORM_USER_NAME".pem
-        recap_file_content "SSH Public Key" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
-        
-        line_fill "$CHORIZONTAL" "$CLINESIZE"
-        center_reg_text "!!! DO NOT LOG OUT JUST YET !!!"
-        center_reg_text "Use another window to test out the above credentials"
-        center_reg_text "If you face issue logging in look at the log file to see what went wrong"
-        center_reg_text "Log file at ${LOGFILE}"
-
-        line_fill "$CHORIZONTAL" "$CLINESIZE"
-        echo
-    fi
-
-    if [[ $ChangeSourceList -eq 3 ]] ||
-       [[ $InstallReqSoftwares -eq 3 ]] ||
-       [[ $ConfigureUFW -eq 3 ]] ||
-       [[ $ConfigureFail2Ban -eq 3 ]]
-       [[ $ScheduleUpdate -eq 3 ]] &&
-       [[ $ChangeRootPwd -eq 3 ]]; then
-        center_err_text "Some operations failed..."
-        center_err_text "These may NOT be catastrophic"
-        center_err_text "Please check $LOGFILE file for details"
-        revert_changes "$1"
-        echo
-    fi
-
-    if [[ $HIDE_CREDENTIALS == "y" ]]; then
-        center_reg_text "Issue the following command to see all credentials"
-        center_reg_text "tail -n 20 ${LOGFILE}"
-    fi
+    exit 1;
 }
 
 
@@ -760,27 +769,29 @@ function recap_file_content(){
     fi
 }
 
-OP_TEXT=(
-    "Creating new user" #0
-    "Creating SSH Key for new user" #1
-    "Securing 'authorized_keys' file" #2
-    "Enabling SSH-only login" #3
-    "Reset sources.list to defaults" #4
-    "Installing required softwares" #5
-    "Configure UFW" #6
-    "Configure Fail2Ban" #7
-    "Changing root password" #8
-    "Scheduling daily update download" #9
-)
-
 
 ##############################################################
 # Step 1 - Create non-root user
 ##############################################################
 
-reset_op_code
-update_event_status "${OP_TEXT[0]}" 1
-op_log "${OP_TEXT[0]}"
+function op_start() {
+    reset_op_code
+    update_event_status "$1" 1
+    op_log "$1"
+}
+
+function op_end() {
+    if [[ $1 -eq 0 ]]; then
+        update_event_status "$2" 2
+        op_log "$2" "SUCCESSFUL"
+    else
+        reset_op_code
+        update_event_status "$2" 3
+        op_log "$2" "FAILED"
+    fi
+}
+
+op_start "${OP_TEXT[0]}"
 {
     if [[ $AUTO_GEN_USERNAME == 'y' ]]; then
         NORM_USER_NAME="$(< /dev/urandom tr -cd 'a-z' | head -c 6)""$(< /dev/urandom tr -cd '0-9' | head -c 2)" || exit 1
@@ -800,15 +811,9 @@ op_log "${OP_TEXT[0]}"
     set_op_code $?
 } 2>> "$LOGFILE" >&2
 
-if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "${OP_TEXT[0]}" 2
-    op_log "${OP_TEXT[0]}" "SUCCESSFUL"
-else
-    reset_op_code
-    update_event_status "${OP_TEXT[0]}" 3
-    op_log "${OP_TEXT[0]}" "FAILED"
-    finally "${OP_TEXT[0]}"
-    exit 1;
+op_end $OP_CODE "${OP_TEXT[0]}"
+if [[ $OP_CODE -eq 3 ]]; then
+    revert_everything_and_exit "${OP_TEXT[0]}"
 fi
 
 
@@ -816,9 +821,7 @@ fi
 # Step 2 - Create SSH Key for the above new user
 ##############################################################
 
-reset_op_code
-update_event_status "${OP_TEXT[1]}" 1
-op_log "${OP_TEXT[1]}"
+op_start "${OP_TEXT[1]}"
 {
     SSH_DIR=/home/"$NORM_USER_NAME"/.ssh
     file_log "Creating SSH directory - $SSH_DIR"
@@ -840,16 +843,10 @@ op_log "${OP_TEXT[1]}"
     set_op_code $?
 } 2>> "$LOGFILE" >&2
 
-if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "${OP_TEXT[1]}" 2
-    op_log "${OP_TEXT[1]}" "SUCCESSFUL"
-else
-    reset_op_code
+op_end $OP_CODE "${OP_TEXT[1]}"
+if [[ $OP_CODE -eq 3 ]]; then
     file_log "Creating SSH Key for new user failed."
-    update_event_status "${OP_TEXT[1]}" 3
-    op_log "${OP_TEXT[1]}" "FAILED"
-    finally "${OP_TEXT[1]}"
-    exit 1;
+    revert_everything_and_exit "${OP_TEXT[1]}"
 fi
 
 
@@ -857,9 +854,7 @@ fi
 # Step 3 - Secure authorized_keys file
 ##############################################################
 
-reset_op_code
-update_event_status "${OP_TEXT[2]}" 1
-op_log "${OP_TEXT[2]}"
+op_start "${OP_TEXT[2]}"
 {
     # Set appropriate permissions for ".ssh" dir and "authorized_key" file
     file_log "Setting appropriate permissions for $SSH_DIR dir and $SSH_DIR/authorized_keys file"
@@ -881,17 +876,11 @@ op_log "${OP_TEXT[2]}"
     done
 } 2>> "$LOGFILE" >&2
 
-if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "${OP_TEXT[2]}" 2
-    op_log "${OP_TEXT[2]}" "SUCCESSFUL"
-else
-    reset_op_code
+op_end $OP_CODE "${OP_TEXT[2]}"
+if [[ $OP_CODE -eq 3 ]]; then
     file_log "Setting restrictive permissions for '~/.ssh/' directory failed"
     file_log "Please do 'ls -lAh ~/.ssh/' and check manually to see what went wrong."
-    update_event_status "${OP_TEXT[2]}" 3
-    op_log "${OP_TEXT[2]}" "FAILED"
-    finally "${OP_TEXT[2]}"
-    exit 1
+    revert_everything_and_exit "${OP_TEXT[2]}"
 fi
 
 
@@ -901,9 +890,7 @@ fi
 
 if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
     # Low priority - But what to do if it fails???
-    reset_op_code
-    update_event_status "${OP_TEXT[5]}" 1
-    op_log "${OP_TEXT[4]}"
+    op_start "${OP_TEXT[4]}"
     {
         file_log "Backing up /etc/apt/sources.list file to /etc/apt/sources.list${BACKUP_EXTENSION}"
         cp /etc/apt/sources.list /etc/apt/sources.list"${BACKUP_EXTENSION}"
@@ -978,13 +965,8 @@ UBUNTU
         fi
     } 2>> "$LOGFILE" >&2
 
-    if [[ $OP_CODE -eq 0 ]]; then
-        update_event_status "${OP_TEXT[4]}" 2
-        op_log "${OP_TEXT[4]}" "SUCCESSFUL"
-    else
-        reset_op_code
-        update_event_status "${OP_TEXT[4]}" 3
-        op_log "${OP_TEXT[4]}" "FAILED"
+    op_end $OP_CODE "${OP_TEXT[4]}"
+    if [[ $OP_CODE -eq 3 ]]; then
         revert_source_list_changes
     fi
 fi
@@ -994,9 +976,7 @@ fi
 # Step 5 - Install required softwares
 ##############################################################
 
-reset_op_code
-update_event_status "${OP_TEXT[5]}" 1
-op_log "${OP_TEXT[5]}"
+op_start "${OP_TEXT[5]}"
 {
     apt-get update
     export DEBIAN_FRONTEND=noninteractive ; apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
@@ -1004,16 +984,10 @@ op_log "${OP_TEXT[5]}"
     set_op_code $?
 } 2>> "$LOGFILE" >&2
 
-if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "${OP_TEXT[5]}" 2
-    op_log "${OP_TEXT[5]}" "SUCCESSFUL"
-else
-    reset_op_code
-    update_event_status "${OP_TEXT[5]}" 3
-    op_log "${OP_TEXT[5]}" "FAILED"
+op_end $OP_CODE "${OP_TEXT[5]}"
+if [[ $OP_CODE -eq 3 ]]; then
     revert_software_installs
 fi
-
 
 ##############################################################
 # Step 6 - Configure UFW
@@ -1024,9 +998,7 @@ ufw status 2>> /dev/null >&2
 
 # Proceed only when UFW is installed
 if [[ $? -eq 0 ]]; then
-    reset_op_code
-    update_event_status "${OP_TEXT[6]}" 1
-    op_log "${OP_TEXT[6]}"
+    op_start "${OP_TEXT[6]}"
     {
         file_log "Setting ufw for ssh, http, https"
         ufw allow ssh && ufw allow http && ufw allow https 
@@ -1037,13 +1009,8 @@ if [[ $? -eq 0 ]]; then
         set_op_code $?
     } 2>> "$LOGFILE" >&2
 
-    if [[ $OP_CODE -eq 0 ]]; then
-        update_event_status "${OP_TEXT[6]}" 2
-        op_log "${OP_TEXT[6]}" "SUCCESSFUL"
-    else
-        reset_op_code
-        update_event_status "${OP_TEXT[6]}" 3
-        op_log "${OP_TEXT[6]}" "FAILED"
+    op_end $OP_CODE "${OP_TEXT[6]}"
+    if [[ $OP_CODE -eq 3 ]]; then
         revert_config_UFW
     fi
 else
@@ -1058,9 +1025,7 @@ fi
 
 # Proceed only when Fail2ban is installed
 if [[ $(dpkg -l | grep -c fail2ban) -gt 0 ]]; then
-    reset_op_code
-    update_event_status "${OP_TEXT[7]}" 1
-    op_log "${OP_TEXT[7]}"
+    op_start "${OP_TEXT[7]}"
     {
         if [[ -f /etc/fail2ban/jail.local ]]; then
             file_log "Backing up /etc/fail2ban/jail.local to /etc/fail2ban/jail.local${BACKUP_EXTENSION}"
@@ -1129,13 +1094,8 @@ FAIL2BAN
         set_op_code $(service_action_and_chk_error "fail2ban" "start")
     } 2>> "$LOGFILE" >&2
 
-    if [[ $OP_CODE -eq 0 ]]; then
-        update_event_status "${OP_TEXT[7]}" 2
-        op_log "${OP_TEXT[7]}" "SUCCESSFUL"
-    else
-        reset_op_code
-        update_event_status "${OP_TEXT[7]}" 3
-        op_log "${OP_TEXT[7]}" "FAILED"
+    op_end $OP_CODE "${OP_TEXT[7]}"
+    if [[ $OP_CODE -eq 3 ]]; then
         revert_config_fail2ban
     fi
 else
@@ -1148,10 +1108,7 @@ fi
 # Step 8 - Schedule cron for daily system update
 ##############################################################
 
-reset_op_code
-update_event_status "${OP_TEXT[9]}" 1
-
-op_log "${OP_TEXT[9]}"
+op_start "${OP_TEXT[9]}"
 {
     dailycron_filename=/etc/cron.daily/linux_init_harden_apt_update.sh
 
@@ -1171,15 +1128,8 @@ op_log "${OP_TEXT[9]}"
     fi
 } 2>> "$LOGFILE" >&2
 
-if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "${OP_TEXT[9]}" 2
-    op_log "${OP_TEXT[9]}" "SUCCESSFUL"
-    file_log "NOTE - we only DOWNLOAD the updates"
-    file_log "\\t - to install use \"apt-get dist-upgrade\""
-else
-    reset_op_code
-    update_event_status "${OP_TEXT[9]}" 3
-    op_log "${OP_TEXT[9]}" "FAILED"
+op_end $OP_CODE "${OP_TEXT[9]}"
+if [[ $OP_CODE -eq 3 ]]; then
     revert_schedule_updates
 fi
 
@@ -1189,10 +1139,7 @@ fi
 ##############################################################
 
 if [[ $RESET_ROOT_PWD == 'y' ]]; then
-
-    reset_op_code
-    update_event_status "${OP_TEXT[8]}" 1
-    op_log "${OP_TEXT[8]}"
+    op_start "${OP_TEXT[8]}"
     {
         # Generate a 15 character random password
         file_log "Generating roots new password..."
@@ -1207,13 +1154,8 @@ if [[ $RESET_ROOT_PWD == 'y' ]]; then
         set_op_code $?
     } 2>> "$LOGFILE" >&2
 
-    if [[ $OP_CODE -eq 0 ]]; then
-        update_event_status "${OP_TEXT[8]}" 2
-        op_log "${OP_TEXT[8]}" "SUCCESSFUL"
-    else
-        reset_op_code
-        update_event_status "${OP_TEXT[8]}" 3
-        op_log "${OP_TEXT[8]}" "FAILED"
+    op_end $OP_CODE "${OP_TEXT[8]}"
+    if [[ $OP_CODE -eq 3 ]]; then
         revert_root_pass_change
     fi
 fi
@@ -1300,9 +1242,7 @@ function set_config_key(){
     fi
 }
 
-reset_op_code
-update_event_status "${OP_TEXT[3]}" 1
-op_log "${OP_TEXT[3]}"
+op_start "${OP_TEXT[3]}"
 {
     # Backup the sshd_config file
     file_log "Backing up /etc/ssh/sshd_config file to /etc/ssh/sshd_config$BACKUP_EXTENSION"
@@ -1336,16 +1276,10 @@ op_log "${OP_TEXT[3]}"
             }
 } 2>> "$LOGFILE" >&2
 
-if [[ $OP_CODE -eq 0 ]]; then
-    update_event_status "${OP_TEXT[3]}" 2
-    op_log "${OP_TEXT[3]}" "SUCCESSFUL"
-else
-    reset_op_code
+op_end $OP_CODE "${OP_TEXT[3]}"
+if [[ $OP_CODE -eq 3 ]]; then
     file_log "Enabling SSH-only login failed."
-    update_event_status "${OP_TEXT[3]}" 3
-    op_log "${OP_TEXT[3]}" "FAILED"
-    finally "${OP_TEXT[3]}"
-    exit 1;
+    revert_everything_and_exit "${OP_TEXT[3]}"
 fi
 
 

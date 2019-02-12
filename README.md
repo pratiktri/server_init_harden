@@ -318,7 +318,7 @@ This step contines from step 3 to harden our ssh login. Here, we edit */etc/ssh/
 
 
 
-### 10. Display Summary
+### 11. Display Summary
 All the generated username, passwords, SSH Key location & SSH Keys themselves are displayed on the screen.
 
 This might not be desired (nosy neighbours), on future versions you might find option to NOT show the details on screen and find them from the log file.
