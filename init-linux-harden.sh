@@ -340,7 +340,6 @@ function log_ops_finish_file_contents() {
 
 function log_revert_error(){
     log_step_status "$1" "FAILED"
-    file_log "$1 - Failed"
     echo
     center_err_text "!!! Error restoring changes !!!"
     center_err_text "!!! You may have to manually fix this !!!"
@@ -353,26 +352,7 @@ function log_revert_error(){
 ##############################################################
 # Op Error Handling
 ##############################################################
-
-function revert_changes(){
-    file_log "Starting revert operation..."
-
-    if [[ $1 = "${STEP_TEXT[0]}" ]]; then
-        revert_create_user
-    elif [[ $1 = "${STEP_TEXT[1]}" ]]; then
-        revert_create_ssh_key
-    elif [[ $1 = "${STEP_TEXT[2]}" ]]; then
-        revert_secure_authorized_key
-    elif [[ $1 = "${STEP_TEXT[3]}" ]]; then
-        revert_ssh_only_login
-    elif [[ $1 = "${STEP_TEXT[4]}" ]]; then
-        # This can be reverted back individually
-        revert_source_list_changes
-    elif [[ $1 = "${STEP_TEXT[5]}" ]]; then
-        # This can be reverted back individually
-        return 7
-    fi
-}
+# Remember to reset exit_code at end of EACH revert fn
 
 function revert_create_user(){
     file_log "Reverting New User Creation..."
@@ -477,6 +457,8 @@ function revert_root_pass_change(){
     center_err_text "Changing root password failed..."
     center_err_text "Your earlier root password remains VALID"
     center_err_text "Script will continue to next step"
+
+    reset_exit_code
 }
 
 function revert_config_UFW(){
@@ -486,8 +468,9 @@ function revert_config_UFW(){
     set_exit_code $?
 
     if [[ $exit_code -eq 0 ]]; then
-        op_rev_log "Reverting - UFW Configuration" "SUCCESSFUL"
+        log_op_rev_status "Reverting - UFW Configuration" "SUCCESSFUL"
     else
+        file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - UFW Configuration"
     fi
 
@@ -525,7 +508,7 @@ function revert_config_fail2ban(){
     } 2>> "$LOGFILE" >&2
 
     if [[ $exit_code -eq 0 ]]; then
-        op_rev_log "Reverting - Fail2ban Config" "SUCCESSFUL"
+        log_op_rev_status "Reverting - Fail2ban Config" "SUCCESSFUL"
     else
         log_revert_error "Reverting - Fail2ban Config"
     fi
@@ -540,6 +523,8 @@ function revert_software_installs(){
     center_err_text "Script will continue to next step"
     file_log "Installing software failed..."
     file_log "This is NOT a catastrophic error"
+
+    reset_exit_code
 }
 
 function revert_schedule_updates() {
@@ -549,7 +534,7 @@ function revert_schedule_updates() {
     set_exit_code $?
 
     if [[ $exit_code -eq 0 ]]; then
-        op_rev_log "Reverting - Daily Update Download" "SUCCESSFUL"
+        log_op_rev_status "Reverting - Daily Update Download" "SUCCESSFUL"
     else
         log_revert_error "Reverting - Daily Update Download"
     fi
@@ -589,10 +574,12 @@ function revert_ssh_only_login(){
         } 2>> "$LOGFILE" >&2
 
     if [[ $exit_code -eq 0 ]]; then
-        op_rev_log "Reverting - SSH-only Login" "SUCCESSFUL"
+        log_op_rev_status "Reverting - SSH-only Login" "SUCCESSFUL"
     else
         log_revert_error "Reverting - SSH-only Login"
     fi
+
+    reset_exit_code
 }
 
 function revert_everything_and_exit() {
@@ -601,7 +588,18 @@ function revert_everything_and_exit() {
     center_err_text "!!! Reverting changes !!!"
     center_err_text "Please look at $LOGFILE for details"
     echo
-    revert_changes "$1"
+
+    file_log "Starting revert operation..."
+
+    if [[ $1 = "${STEP_TEXT[0]}" ]]; then
+        revert_create_user
+    elif [[ $1 = "${STEP_TEXT[1]}" ]]; then
+        revert_create_ssh_key
+    elif [[ $1 = "${STEP_TEXT[2]}" ]]; then
+        revert_secure_authorized_key
+    elif [[ $1 = "${STEP_TEXT[3]}" ]]; then
+        revert_ssh_only_login
+    fi
 
     exit 1;
 }
@@ -644,7 +642,7 @@ STEP_TEXT=(
 
 function set_exit_code() {
     if [[ $OP_CODE -eq 0 ]] && [[ $1 -gt 0 ]]; then
-        OP_CODE=$1
+        exit_code=$1
     fi
 }
 
@@ -795,7 +793,7 @@ function setup_step_end() {
         update_step_status "$1" 2
         log_step_status "$1" "SUCCESSFUL"
     else
-        reset_exit_code
+        file_log "Error code - ${exit_code}"
         update_step_status "$1" 3
         log_step_status "$1" "FAILED"
     fi
@@ -810,7 +808,7 @@ setup_step_start "${STEP_TEXT[0]}"
 {
     if [[ $AUTO_GEN_USERNAME == 'y' ]]; then
         NORM_USER_NAME="$(< /dev/urandom tr -cd 'a-z' | head -c 6)""$(< /dev/urandom tr -cd '0-9' | head -c 2)" || exit 1
-        file_log "Generated user name - ${NORM_USER_NAME}"
+        file_log "Generated user name ${NORM_USER_NAME}"
     fi
 
     # Generate a 15 character random password
@@ -818,10 +816,12 @@ setup_step_start "${STEP_TEXT[0]}"
     file_log "Generated user password - ${USER_PASS}"
 
     # Create the user and assign the above password
+    file_log "Creating user"
     echo -e "${USER_PASS}\\n${USER_PASS}" | adduser "$NORM_USER_NAME" -q --gecos "First Last,RoomNumber,WorkPhone,HomePhone"
     set_exit_code $?
 
     # Give root privilages to the above user
+    file_log "Assigning user sudo privileges"
     usermod -aG sudo "$NORM_USER_NAME"
     set_exit_code $?
 } 2>> "$LOGFILE" >&2
@@ -844,8 +844,8 @@ setup_step_start "${STEP_TEXT[1]}"
     set_exit_code $?
 
     # Generate a 15 character random password for key
-    file_log "Generating SSH Key Passphrase - ${KEY_PASS}"
     KEY_PASS="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
+    file_log "Generated SSH Key Passphrase - ${KEY_PASS}"
     set_exit_code $?
 
     # Create a OpenSSH-compliant ed25519-type key
@@ -1129,7 +1129,7 @@ setup_step_start "${STEP_TEXT[9]}"
 
     # Check if we created a schedule already
     if [[ -f $dailycron_filename ]] ; then
-        update_step_status "$1" 0
+        update_step_status "${STEP_TEXT[9]}" 0
     else
         # If not created already - create one into the file
         file_log "Adding our schedule to the script file ${dailycron_filename}"
