@@ -34,12 +34,15 @@ function usage() {
     echo "Usage: sudo bash $0 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]"
     echo "  -u,     --username              Username for your server (If omitted script will choose an username for you)"
     echo "  -r,     --resetrootpwd          Reset current root password"
-    echo "  -hide,  --hide-credentials      Credentials will hidden from the screen and can ONLY be found in the logfile (tail -n 20 logfile)"
+    echo "  -hide,  --hide-credentials      Credentials will hidden from screen and can ONLY be found in the logfile"
+    echo "                                  eg - tail -n 20 logfile"
     echo "  -d,     --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org"
+    echo "  -ou,    --only-create-user      Only creates the user and its SSH authorizations"
+    echo "                                  NOTE: -r, -d would be ignored"
 
     echo ""
     echo "Example: bash ./$SCRIPT_NAME.sh --username myuseraccount --resetrootpwd"
-    printf "\\nBelow restrictions apply to username this script accepts - \\n"
+    printf "\\nBelow restrictions apply to usernames - \\n"
     printf "%2s - [a-zA-Z0-9] [-] [_] are allowed\\n%2s - NO special characters.\\n%2s - NO spaces.\\n" " " " " " "
 }
 
@@ -114,6 +117,7 @@ RESET_ROOT_PWD="n"
 DEFAULT_SOURCE_LIST="n"
 QUIET="n"
 HIDE_CREDENTIALS="n"
+USER_CREATION_ALONE="n"
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -132,6 +136,10 @@ while [[ "$#" -gt 0 ]]; do
             fi
 
             shift
+            shift
+            ;;
+        -ou|--only-create-user)
+            USER_CREATION_ALONE="y"
             shift
             ;;
         -r|--resetrootpwd)
@@ -199,10 +207,10 @@ if [[ "$AUTO_GEN_USERNAME" == "y" ]]; then
 else
     printf "%3s Username you opted = %s\\n" " -" "$NORM_USER_NAME" | tee -a "$LOGFILE"
 fi
-if [[ "$DEFAULT_SOURCE_LIST" == "y" ]]; then
+if [[ "$DEFAULT_SOURCE_LIST" == "y" && "$USER_CREATION_ALONE" == "n" ]]; then
     printf "%3s Reset the url for apt repo from VPS provided CDN to OS provided ones\\n" " -" | tee -a "$LOGFILE"
 fi
-if [[ "$RESET_ROOT_PWD" == "y" ]]; then
+if [[ "$RESET_ROOT_PWD" == "y" && "$USER_CREATION_ALONE" == "n" ]]; then
     printf "%3s Reset root password\\n" " -" | tee -a "$LOGFILE"
 fi
 if [[ $HIDE_CREDENTIALS == "y" ]]; then
@@ -222,6 +230,10 @@ if [[ $QUIET == "n" ]]; then
     read -r
     clear
 fi
+
+
+# Start recording execution time from now on
+SECONDS=0
 
 
 ##############################################################
@@ -606,6 +618,8 @@ function revert_everything_and_exit() {
         revert_ssh_only_login
     fi
 
+    center_reg_text "Total execution time - ${SECONDS}s"
+
     exit 1;
 }
 
@@ -743,7 +757,7 @@ function recap() {
     log_ops_finish "SSH Private Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem
     log_ops_finish "SSH Public Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
     log_ops_finish "SSH Key Passphrase" "$CreateSSHKey" "$KEY_PASS"    
-    if [[ "$RESET_ROOT_PWD" == "y" ]]; then
+    if [[ "$RESET_ROOT_PWD" == "y" && "$USER_CREATION_ALONE" == "n" ]]; then
         log_ops_finish "New root Password" "$ChangeRootPwd" "$PASS_ROOT"
     fi
     line_fill "$CHORIZONTAL" "$CLINESIZE"
@@ -776,6 +790,11 @@ function recap() {
         center_reg_text "Issue the following command to see all credentials"
         center_reg_text "tail -n 20 ${LOGFILE}"
     fi
+
+    file_log "Total execution time in seconds - ${SECONDS}"
+    center_reg_text "Total execution time - ${SECONDS}s"
+
+    exit
 }
 
 function setup_step_start() {
@@ -901,6 +920,10 @@ if [[ $exit_code -gt 0 ]]; then
     file_log "Setting restrictive permissions for '~/.ssh/' directory failed"
     file_log "Please do 'ls -lAh ~/.ssh/' and check manually to see what went wrong."
     revert_everything_and_exit "${STEP_TEXT[2]}"
+fi
+
+if [[ "$USER_CREATION_ALONE" == "y" ]]; then
+    recap
 fi
 
 

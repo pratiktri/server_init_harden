@@ -52,15 +52,18 @@ Run the script with below option to see all available options:-
 ```console
 root@host:~# bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
 
-Usage: sudo bash /dev/fd/63 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]
-  -u,    --username              Username for your server (If omitted script will choose an username for you)
-  -r,    --resetrootpwd          Reset current root password
-  -hide, --hide-credentials      Credentials will hidden from the screen and can ONLY be found in the logfile (tail -n 20 /tmp/logfilename)
-  -d,    --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org
+Usage: sudo bash $0 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]
+  -u,     --username              Username for your server (If omitted script will choose an username for you)
+  -r,     --resetrootpwd          Reset current root password
+  -hide,  --hide-credentials      Credentials will hidden from screen and can ONLY be found in the logfile
+                                  eg - tail -n 20 logfile
+  -d,     --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org
+  -ou,    --only-create-user      Only creates the user and its SSH authorizations
+                                  NOTE: -r, -d would be ignored
 
 Example: bash ./linux_init_harden.sh --username myuseraccount --resetrootpwd
 
-Below restrictions apply to username this script accepts - 
+Below restrictions apply to usernames - 
    - [a-zA-Z0-9] [-] [_] are allowed
    - NO special characters.
    - NO spaces.
@@ -363,7 +366,7 @@ Ans - NO.
 > 
 >    An operation is _idempotent_ if the result of performing it once is exactly the same as the result of performing it repeatedly without any intervening actions.
 
-Q - How so?
+Q - Why is it not idempotent?
 
 Ans - We take backup of the file which stays on your server after operations. After taking back up of the file - __script sometimes comments out older configuration__. This is specifically true for [Step 4](https://github.com/pratiktri/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step") where we comment out older configurations and append new ones to the end of the file. Also, for the SSH configuration file (/etc/ssh/sshd_conf) where we comment out the line of configuration and add the new configuration below the commented out line. So, if we re-run the script multiple times, those changes would compound as listed below. 
 
@@ -431,7 +434,7 @@ root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_har
 ## Todo
 
 ### Bug fixes
-- [x] ~~On successful restoration - delete the bkp files~~ (Abandoned - as it could be counter productive)
+- [x] ~~On successful restoration - delete the bkp files~~ (Abandoned - as it could be counter-productive)
 - [x] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
 - [x] What to do if creating .bkp file fails? Ans - fail that entire step
 - [x] Step 6 & 7 - Instead of checking if installation was successful or not - check if the the software we need is installed or not
@@ -441,12 +444,12 @@ root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_har
 ### Roadmap
 - [x] Update README - provide example of how it can be used from a non-root account.
 - [x] Update README - Warn that - If your connection gets reset during this operation, you WILL loose all access to the server.
-- [ ] Update README - Add some screen captures
+- [x] Update README - Add some screen captures
 - [x] Update README - Detail all the locations where backup files would be created
 - [x] Update README - Note that we never uninstall any software during restore operations
 - [x] New - Provide Flag - to NOT display credentials on screen (because - nosy neighbours)
 - [x] New - Schedule daily system update downloads
+- [x] New - Display time taken to complete all operations
+- [x] New - Provide flag to ONLY create a new user (sudo???) - when script is already run and you just want to create another user
 - [ ] New - Enable LUKS (is it even worth it???)
 - [ ] New - DNSCrypt
-- [ ] New - Display time taken to complete all operations
-- [ ] New - Provide flag to ONLY create a new user (sudo???) - when script is already run and you just want to create another user
