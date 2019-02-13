@@ -32,11 +32,10 @@ function usage() {
     fi
 
     echo "Usage: sudo bash $0 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]"
-    echo "  -u, --username              Username for your server (If omitted script will choose an username for you)"
-    echo "  -r, --resetrootpwd          Reset current root password"
-    echo "  -hide, --hide-credentials   Credentials will hidden from the screen and can ONLY be found in the logfile (tail -n 20 logfile)"
-    echo "  -d, --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org"
-    echo "                              NOTE - If you fail to update system after using it, you need to manually reset it. This script keeps a backup in the same folder"
+    echo "  -u,     --username              Username for your server (If omitted script will choose an username for you)"
+    echo "  -r,     --resetrootpwd          Reset current root password"
+    echo "  -hide,  --hide-credentials      Credentials will hidden from the screen and can ONLY be found in the logfile (tail -n 20 logfile)"
+    echo "  -d,     --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org"
 
     echo ""
     echo "Example: bash ./$SCRIPT_NAME.sh --username myuseraccount --resetrootpwd"
