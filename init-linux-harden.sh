@@ -343,7 +343,6 @@ function log_revert_error(){
     center_err_text "!!! Error restoring changes !!!"
     center_err_text "!!! You may have to manually fix this !!!"
     center_err_text "!!! Check the log file for details !!!"
-    center_reg_text "Log file at ${LOGFILE}"
     echo
 }
 
@@ -1143,6 +1142,7 @@ setup_step_start "${STEP_TEXT[9]}"
 
     # Check if we created a schedule already
     if [[ -f $dailycron_filename ]] ; then
+        file_log "$dailycron_filename file already exists. Skipping this step..."
         update_step_status "${STEP_TEXT[9]}" 0
     else
         # If not created already - create one into the file
@@ -1179,7 +1179,7 @@ if [[ $RESET_ROOT_PWD == 'y' ]]; then
 
         # Change root's password
         file_log "Setting the new root password"
-        echo -e "${PASS_ROOT}\\n${PASS_ROOT}" | passwd
+        echo -e "${PASS_ROOT}\\n${PASS_ROOT}" | passwd root
         set_exit_code $?
     } 2>> "$LOGFILE" >&2
 

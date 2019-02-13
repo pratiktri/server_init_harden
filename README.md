@@ -1,20 +1,27 @@
-__Linux Server Hardener__ is a bash script that automates few of the tasks that you need to perform on a new Linux server to give it basic amount security.
+# Linux Server Hardener
+Bash script that automates server security hardening on a new Linux server.
 
 I wanted to change my VPS(Virtual Private Server) provider and was testing out many providers and many Linux flavours on those VPSes. But before doing anything those servers needed to be given basic amount security and this involved a set of repetitive commands on terminal. Depending on network speed and number of mis-types, these took between 30-90 minutes to perform. 
 
 This script is meant to save that time.
 
-*** __WARNING__ ***
+## *** __WARNING__ ***
 ---
-This script can potentially make your server inaccessible. Proceed with caution.
+This script can potentially make your server inaccessible. 
 
-# Status
+At the very least read the [FAQ section](https://github.com/pratiktri/init-li-harden#faq) before executing.
+
+If your connection gets reset during this operation, you WILL loose all access to the server.
+
+---
+
+## Status
 
 Beta testing. NOT production ready.
 
-# Usage
+## Usage
 
-## Prerequisites
+### Prerequisites
 
 * One of the following Linux flavours
   - Debian 8.x
@@ -25,19 +32,20 @@ Beta testing. NOT production ready.
 * *wget* should be installed (comes preinstalled on the above OSes anyways)
 * *root* access to the server
 
-## Examples
+### Examples
 
 The script is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VPS) as *__root__*.
 
-```bash
-bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --username someusername --resetrootpwd --defaultsourcelist
+```console
+root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && bash ./init-linux-harden.sh --username someusername --resetrootpwd --defaultsourcelist --quiet --hide-credentials
 
-bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --quiet
+root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && bash ./init-linux-harden.sh -u someusername -r -d -q -hide
+
 ```
 
 > There are inherent risks involved with running scripts directly (without reviewing it first) from web - as done above. Everyone does it anyways, but you have been warned. 
 
-## Available Options
+### Available Options
 
 Run the script with below option to see all available options:-
 
@@ -58,7 +66,7 @@ Below restrictions apply to username this script accepts -
    - NO spaces.
 ```
 
-# What does it do ?
+## What does it do ?
 Script performs the following operations:-
 
 1. [Create non-root user and give it "sudo" privilege](https://github.com/pratiktri/init-li-harden#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
@@ -91,10 +99,10 @@ If you are stuck on Step 5 for more than 10 minutes, something went wrong in Ste
 
 Step 8 is the most dangerous operation. 
 
-# Error Handling
+## Error Handling
 Since the script has the potential to make you loose access to your server, it takes a number of steps to recover from an error.
 
-## Back up files
+### Back up files
 Script creates a back of every file that it changes. 
 
 Back up files are stored in the same directory as the original file. 
@@ -103,10 +111,28 @@ Back up file name = (Original File Name) + "." + (Script start timestamp in '%d_
 
 So, if the original file name was *sshd_config* and the script was started at 25th January 2019 09:15:25, then the backup files name would be *sshd_config.25_01_2019-09_15_25_bak*
 
-## Recovery
+### Recovery
 Script *tries* to recover from an error if it can determine that an error has occured. What it does to recover depends on which step the error has occured.
 
 **Step 9 (Alter /etc/ssh/sshd_config) is where most danger resides. If this step fails & script can not successfully recovery - then you'll most likely loose all access to your system**.
+
+## Screenshots
+### Operation successful and credentials displayed on screen
+![Success With Credentials on Screen - the command](/screencaptures/success1.jpg?raw=true "Command")
+
+![Success With Credentials on Screen - Prompt to procceed](/screencaptures/success2.jpg?raw=true "Prompt to Procceed")
+
+![Success With Credentials on Screen - Execution in Process](/screencaptures/success3.jpg?raw=true "Execution in Process")
+
+![Success With Credentials on Screen - Execution Succeeded 1](/screencaptures/success4.jpg?raw=true "Execution Succeeded 1")
+
+![Success With Credentials on Screen - Execution Succeeded 2](/screencaptures/success5.jpg?raw=true "Execution Succeeded 2")
+
+### Operation successful and credentials hidden from screen
+![Success With Credentials Hidden - Execution Succeeded 3](/screencaptures/success6.jpg?raw=true "Execution Succeeded 3")
+
+### Operation failed and reverted
+![Failure and revert](/screencaptures/failure.jpg?raw=true "Failed and Reverted")
 
 ## Details of each operation
 ### 1. Create non-root user and give it "sudo" privilege
@@ -142,7 +168,7 @@ You need the following 3 to be able to access the server after the script is don
 
  These 3 will be diplayed on screen at the end of the script. Copy them and __keep them safe. Without these you won't be able to access the server.__
 
-We use OpenSSH keyformat and ed25519 algorithm to generate ours. You can read the reason for that [here](https://security.stackexchange.com/questions/143442/what-are-ssh-keygen-best-practices#answer-144044) and [here](https://stribika.github.io/2015/01/04/secure-secure-shell.html). For additional security the key is secured by a passphrase. This passphrase is randomly generated. Passphrase are 15 character long and are alphanumeric. Algorithm used for user's password and SSH Private Key's passphrase are the same.
+We use OpenSSH keyformat and ed25519 algorithm to generate ours. You can read the reason for that [here](https://security.stackexchange.com/a/144044) and [here](https://stribika.github.io/2015/01/04/secure-secure-shell.html). For additional security the key is secured by a passphrase. This passphrase is randomly generated. Passphrase are 15 character long and are alphanumeric. Algorithm used for user's password and SSH Private Key's passphrase are the same.
 
 Generated keys are placed in ".ssh" sub-directory of the user's (created in step 1 above) home-directory, i.e., /home/*__[username]__*/.ssh/
 
@@ -219,6 +245,8 @@ Pretty self-explanatory.
 > 
 > __After Error__ - Script continues to next step.
 
+NOTE - As it is evident from above script does not uninstalled already installed programs even when error occors in this step or any other steps. Cause, you might have installed those programs before running the script or those programs might have been preloaded by the OS itself - too many variables to consider.
+
 
 
 ### 6. Configure UFW
@@ -266,8 +294,8 @@ While it is a bad idea to schedule automatic installation of updates ([read more
 
 In this step we schedule a daily crontab (/etc/cron.daily/linux_init_harden_apt_update.sh) to download updates. You would want to manually do the installation running the below command.
 
-```bash
-sudo apt-get dist-upgrade
+```console
+user@host:~$ sudo apt-get dist-upgrade
 ```
 #### Error Handling
 
@@ -275,16 +303,16 @@ sudo apt-get dist-upgrade
 > 
 > __Restoration__ - Remove the script file (/etc/cron.daily/linux_init_harden_apt_update.sh).
 > 
-> __Impact of Restoration Failure__ - The cron job might execute once a day and *fail*. You might have to manually delete the file (/etc/cron.daily/linux_init_harden_apt_update.sh) manually.
+> __Impact of Restoration Failure__ - The cron job might execute once a day and *fail*. You might have to delete the file (/etc/cron.daily/linux_init_harden_apt_update.sh) manually.
 > 
 > __After Error__ - Continue to next step.
 
 ### 9. [Optionally] Reset root password
-Since, VPS providers sends you the password of your VPS's *root* user in email in plain text. So, password needs to be changed immediately. **But, since we have disabled *root* login AND password login in the above step, changing *root* password might be an overkill**. But, still...
+Since, VPS providers sends you the password of your VPS's *root* user in email in plain text. So, password needs to be changed immediately. **But, since we will disable *root* login AND password login in the next step, changing *root* password might be an overkill**. But, still...
 
-Also most VPS providers these days, allow you to provide SSH Public Key in their website. If you have done that you can skip this step. **It is disabled by default anyways**.
+Also most VPS providers these days allow you to provide SSH Public Key in their website. If you have done that you can skip this step. **It is disabled by default anyways**.
 
-To change your *root* password provide option --resetrootpw. *root* password then be randomly generated. Passwords are 15 character long and are alphanumeric.
+To change your *root* password provide option *-r* or *--resetrootpw*. *root* password will be randomly generated. Passwords are 15 character long and are alphanumeric.
 
 #### Error Handling
 
@@ -311,8 +339,8 @@ This step contines from step 3 to harden our ssh login. Here, we edit */etc/ssh/
 > __Restoration__ - Delete user and its home directory; Disable UFW: If back up of /etc/fail2ban/jail.local file found, then that is restored; else back up of /etc/fail2ban/jail.conf is restored. Also, back up of /etc/fail2ban/jail.d/defaults-debian.conf file restored if available. Restore the /etc/ssh/sshd_config file from backup file created before the operation.
 > 
 > __Impact of Restoration Failure__ - Fatal. DO NOT logout of the session. If you do then, you may not be able to log back in. Check the log file to see what went wrong. Issue the following command and see what is the out put. Search the error message on internet for solution.
-> ```bash
-> # service sshd restart
+> ```console
+> root@host:~# service sshd restart
 > ```
 > __After Error__ - Script will be terminated.
 
@@ -327,25 +355,98 @@ NOTE - while we login through SSH Keys, you will still be asked for your passwor
 
 The logfile is located in /tmp/ directory - thus will be removed when server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen as well.
 
-# Todo
+## FAQ
+Q - Is the script idempotent?
 
-## Bug fixes
+Ans - NO.
+> __Idempotency__
+> 
+>    An operation is _idempotent_ if the result of performing it once is exactly the same as the result of performing it repeatedly without any intervening actions.
+
+Q - How so?
+
+Ans - We take backup of the file which stays on your server after operations. After taking back up of the file - __script sometimes comments out older configuration__. This is specifically true for [Step 4](https://github.com/pratiktri/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step") where we comment out older configurations and append new ones to the end of the file. Also, for the SSH configuration file (/etc/ssh/sshd_conf) where we comment out the line of configuration and add the new configuration below the commented out line. So, if we re-run the script multiple times, those changes would compound as listed below. 
+
+ 1. Multiple backup files of _sources.list_ in _/etc/apt/_ directory. eg - _sources.list.13_02_2019-01_21_07_bak_ for each execution.
+ 2. Many commented out lines on _/etc/apt/sources.list_ file.
+ 3. Multiple backup files of ALL (.list) files under _/etc/apt/sources.d/_ directory.
+ 4. Many commented out lines on ALL (.list) files under _/etc/apt/sources.d/_ directory.
+ 5. If softwares would be installed or updated _sudo_, _curl_, _screen_, _ufw_, _fail2ban_.
+ 6. *One* backup of _/etc/fail2ban/jail.conf_ file.
+ 7. Multiple backups of _/etc/fail2ban/jail.local_ file
+ 8. Multiple backups of _/etc/fail2ban/jail.d/defaults-debian.conf_ file
+ 9. Multiple backups of _sshd_config_ file in _/etc/sshd/_ directory
+
+Q - What would happen if I rerun the script multiple times?
+Ans - 
+ * A new user would be created per execution
+ * __All__ changes you have made to _/etc/apt/* /*.list_ files will be __overwritten__.
+ * __All__ changes to _/etc/fail2ban/jail.conf_ file would be skipped (file __would NOT be read__ by fail2ban anymore).
+ * Following configuration changes to _/etc/fail2ban/jail.local_ will be __overwitten__:- 
+    1. [DEFAULT] bantime
+    2. [DEFAULT] backend
+    3. [DEFAULT] ignoreip
+ * __All__ changes to _/etc/fail2ban/jail.d/defaults-debian.conf_ will be __overwritten__.
+ * Following changes to _/etc/sshd/sshd_config_ file would be overwritten
+    1. PermitRootLogin
+    2. PasswordAuthentication
+    3. AuthorizedKeysFile
+
+Q - What are the files that the script creates or edits?
+
+Ans - Following is the list (in order of execution):-
+1. New - /home/[_new-username_]/.ssh/[_new-username_].pem
+2. New - /home/[_new-username_]/.ssh/[_new-username_].pem.pub
+3. New - /home/[_new-username_]/.ssh/authorized_keys
+4. New - /etc/apt/sources.list.[_execution-timestamp_]_bkp
+5. Edit - /etc/apt/sources.list
+6. New - /etc/apt/sources.d/[anydotlistfile._list_].[_execution-timestamp_]_bkp
+7. Edit - /etc/apt/sources.d/[anydotlistfile._list_]
+8. New if it __does not__ exist - _/etc/fail2ban/jail.local_
+9. New - /etc/fail2ban/jail.conf.[_execution-timestamp_]_bkp
+10. New if _/etc/fail2ban/jail.local_ __exists__ - _/etc/fail2ban/jail.local.[_execution-timestamp_]_bkp_
+11. Edit - _/etc/fail2ban/jail.local_
+12. New - _/etc/fail2ban/jail.d/defaults-debian.conf[_execution-timestamp_]_bkp_
+13. Edit - _/etc/fail2ban/jail.d/defaults-debian.conf_
+14. New if __does not__ exist - /etc/cron.daily/linux_init_harden_apt_update.sh
+15. New - _/etc/ssh/sshd_config[_execution-timestamp_]_bkp_
+16. Edit - _/etc/ssh/sshd_config_
+
+Q - Why comment out entire files in /etc/apt/ instead of just deleting them and creating new ones with required configurations?
+
+Ans - If there was error creating backup files, you would have no way to restore sources from. We can put more if-else to check if backup creation failed - but that would make the code unreadable. This is a lengthy script; readability is paramount.
+
+Q - Can I execute it as a non-root user?
+
+Ans - User belongs to "sudo" group => Yes
+      User does not belong to "sudo" group => No
+
+Run the script with "sudo" privileges:-
+```console
+root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh --username someusername --resetrootpwd --defaultsourcelist --quiet --hide-credentials
+
+root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh -u someusername -r -d -q -hide
+```
+
+## Todo
+
+### Bug fixes
 - [x] ~~On successful restoration - delete the bkp files~~ (Abandoned - as it could be counter productive)
 - [x] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
 - [x] What to do if creating .bkp file fails? Ans - fail that entire step
-- [ ] fail2ban does not work on Ubuntu 14.04 => does NOT have the defaults-debian.conf file.
-- [ ] Exception handle - when curl https://ipinfo.io/ip fails
 - [x] Step 6 & 7 - Instead of checking if installation was successful or not - check if the the software we need is installed or not
+- [ ] fail2ban on Ubuntu 14.04 => need apply default-debian.conf to jail.local itself.
+- [ ] Exception handle - when curl https://ipinfo.io/ip fails
 
-## Roadmap
-- [ ] Update README - provide example of how it can be used from an non-root account.
-- [ ] Update README - Warn that - If your connection gets reset during this operation, you WILL loose all access to the server.
+### Roadmap
+- [x] Update README - provide example of how it can be used from a non-root account.
+- [x] Update README - Warn that - If your connection gets reset during this operation, you WILL loose all access to the server.
 - [ ] Update README - Add some screen captures
-- [ ] Update README - Detail all the locations where backup files would be created
-- [ ] Update README - Note that we never uninstall any software during restore operations
+- [x] Update README - Detail all the locations where backup files would be created
+- [x] Update README - Note that we never uninstall any software during restore operations
 - [x] New - Provide Flag - to NOT display credentials on screen (because - nosy neighbours)
 - [x] New - Schedule daily system update downloads
 - [ ] New - Enable LUKS (is it even worth it???)
 - [ ] New - DNSCrypt
 - [ ] New - Display time taken to complete all operations
-- [ ] Provide flag to ONLY create a new user (sudo???) - when script is already run and you just want to create another user
+- [ ] New - Provide flag to ONLY create a new user (sudo???) - when script is already run and you just want to create another user
