@@ -659,8 +659,8 @@ function update_step_status() {
 }
 
 function get_step_status() {
-    local event=get_step_var_from_stepname "$1"
-    return ${!event}
+    step_variable_name=$(get_step_var_from_stepname "$1")
+    echo "${!step_variable_name}"
 }
 
 function get_step_var_from_stepname() {
@@ -786,8 +786,7 @@ function setup_step_end() {
     # Since we set step status to be 1 in setup_step_start(), 
         # it can become 0 only if we explicitly do the following INSIDE the step
         # update_step_status "$1" 0
-    step_status=$(get_step_status "$1")
-    if [[ $step_status -eq 0 ]]; then
+    if [[ $(get_step_status "$1") -eq 0 ]]; then
         log_step_status "$1" "NO-OP"
         return
     fi
