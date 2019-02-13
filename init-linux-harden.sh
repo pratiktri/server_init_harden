@@ -1,7 +1,7 @@
 #!/etc/bin/env bash
 
 SCRIPT_NAME=linux_init_harden
-SCRIPT_VERSION=0.9
+SCRIPT_VERSION=1.0
 
 LOGFILE=/tmp/"$SCRIPT_NAME"_v"$SCRIPT_VERSION".log
 # Reset previous log file
@@ -35,9 +35,9 @@ function usage() {
     echo "  -u,     --username              Username for your server (If omitted script will choose an username for you)"
     echo "  -r,     --resetrootpwd          Reset current root password"
     echo "  -hide,  --hide-credentials      Credentials will hidden from screen and can ONLY be found in the logfile"
-    echo "                                  eg - tail -n 20 logfile"
+    echo "                                  eg: tail -n 20 logfile"
     echo "  -d,     --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org"
-    echo "  -ou,    --only-create-user      Only creates the user and its SSH authorizations"
+    echo "  -ou,    --only-user             Only creates the user and its SSH authorizations"
     echo "                                  NOTE: -r, -d would be ignored"
 
     echo ""
@@ -138,7 +138,7 @@ while [[ "$#" -gt 0 ]]; do
             shift
             shift
             ;;
-        -ou|--only-create-user)
+        -ou|--only-user)
             USER_CREATION_ALONE="y"
             shift
             ;;
@@ -386,8 +386,6 @@ function revert_create_user(){
         file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - New User Creation"
     fi
-
-    reset_exit_code
 }
 
 function revert_create_ssh_key(){
@@ -404,8 +402,6 @@ function revert_create_ssh_key(){
         file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - SSH Key Generation"
     fi
-
-    reset_exit_code
 }
 
 function revert_secure_authorized_key(){
@@ -431,11 +427,11 @@ function revert_secure_authorized_key(){
         file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - SSH Key Authorization"
     fi
-
-    reset_exit_code
 }
 
 function revert_source_list_changes(){
+    reset_exit_code
+
     file_log "Reverting Source_list Changes..."
 
     unalias cp &>/dev/null
@@ -467,15 +463,16 @@ function revert_source_list_changes(){
 }
 
 function revert_root_pass_change(){
+    reset_exit_code
+
     echo
     center_err_text "Changing root password failed..."
     center_err_text "Your earlier root password remains VALID"
     center_err_text "Script will continue to next step"
-
-    reset_exit_code
 }
 
 function revert_config_UFW(){
+    reset_exit_code
     file_log "Reverting UFW Configuration..."
 
     ufw disable 2>> "$LOGFILE" >&2
@@ -492,6 +489,8 @@ function revert_config_UFW(){
 }
 
 function revert_config_fail2ban(){
+    reset_exit_code
+
     file_log "Reverting Fail2ban Config..."
 
     unalias cp &>/dev/null
@@ -532,17 +531,18 @@ function revert_config_fail2ban(){
 }
 
 function revert_software_installs(){
+    reset_exit_code
+    
     echo
     center_err_text "Error while installing softwares"
     center_err_text "This may be a false-alarm"
     center_err_text "Script will continue to next step"
     file_log "Installing software failed..."
     file_log "This is NOT a catastrophic error"
-
-    reset_exit_code
 }
 
 function revert_schedule_updates() {
+    reset_exit_code
     file_log "Reverting Daily Update Download..."
 
     rm "$dailycron_filename"
@@ -560,6 +560,7 @@ function revert_schedule_updates() {
 
 function revert_ssh_only_login(){
     revert_secure_authorized_key
+
     if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
         revert_source_list_changes
     fi
@@ -608,6 +609,8 @@ function revert_everything_and_exit() {
 
     file_log "Starting revert operation..."
 
+    reset_exit_code
+    
     if [[ $1 = "${STEP_TEXT[0]}" ]]; then
         revert_create_user
     elif [[ $1 = "${STEP_TEXT[1]}" ]]; then
@@ -732,47 +735,17 @@ function recap() {
     if [[ $CreateNonRootUser -eq 2 ]] &&
         [[ $CreateSSHKey -eq 2 ]] &&
         [[ $SecureAuthkeysfile -eq 2 ]] &&
-        [[ $ChangeSourceList -le 2 ]] && # Since 0 (NO-OP) is still success
         [[ $InstallReqSoftwares -eq 2 ]] &&
+        [[ $ChangeSourceList -le 2 ]] && # Since 0 (NO-OP) is still success
         [[ $ConfigureUFW -le 2 ]] && # Since 0 (NO-OP) is still success
         [[ $ConfigureFail2Ban -le 2 ]] && # Since 0 (NO-OP) is still success
-        [[ $ScheduleUpdate -eq 2 ]] &&
+        [[ $ScheduleUpdate -le 2 ]] && # Since 0 (NO-OP) is still success
         [[ $ChangeRootPwd -le 2 ]] && # Since 0 (NO-OP) is still success
         [[ $EnableSSHOnly -eq 2 ]]; then
         echo
         line_fill "$CHORIZONTAL" "$CLINESIZE"
-        line_fill "$CHORIZONTAL" "$CLINESIZE"
         center_reg_text "ALL OPERATIONS COMPLETED SUCCESSFULLY"
     fi
-    
-    #Recap
-    file_log ""
-    file_log ""
-    file_log ""
-    file_log ""
-
-    line_fill "$CHORIZONTAL" "$CLINESIZE"
-    log_ops_finish "User Name" "$CreateNonRootUser" "$NORM_USER_NAME"
-    log_ops_finish "User's Password" "$CreateNonRootUser" "$USER_PASS"
-    log_ops_finish "SSH Private Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem
-    log_ops_finish "SSH Public Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
-    log_ops_finish "SSH Key Passphrase" "$CreateSSHKey" "$KEY_PASS"    
-    if [[ "$RESET_ROOT_PWD" == "y" && "$USER_CREATION_ALONE" == "n" ]]; then
-        log_ops_finish "New root Password" "$ChangeRootPwd" "$PASS_ROOT"
-    fi
-    line_fill "$CHORIZONTAL" "$CLINESIZE"
-
-    log_ops_finish_file_contents "SSH Private Key" "$SSH_DIR"/"$NORM_USER_NAME".pem
-    log_ops_finish_file_contents "SSH Public Key" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
-    
-    line_fill "$CHORIZONTAL" "$CLINESIZE"
-    center_reg_text "!!! DO NOT LOG OUT JUST YET !!!"
-    center_reg_text "Use another window to test out the above credentials"
-    center_reg_text "If you face issue logging in look at the log file to see what went wrong"
-    center_reg_text "Log file at ${LOGFILE}"
-
-    line_fill "$CHORIZONTAL" "$CLINESIZE"
-    echo
 
     if [[ $ChangeSourceList -eq 3 ]] ||
        [[ $InstallReqSoftwares -eq 3 ]] ||
@@ -781,13 +754,46 @@ function recap() {
        [[ $ScheduleUpdate -eq 3 ]] &&
        [[ $ChangeRootPwd -eq 3 ]]; then
         center_err_text "Some operations failed..."
-        center_err_text "These may NOT be catastrophic"
+        center_err_text "System would function with reduced security"
         center_err_text "Please check $LOGFILE file for details"
         echo
     fi
+    
+    #Recap
+    file_log ""
+    file_log ""
+    file_log ""
+    file_log ""
+
+    if [[ $HIDE_CREDENTIALS == "n" ]]; then
+        line_fill "$CHORIZONTAL" "$CLINESIZE"
+    fi
+    log_ops_finish "User Name" "$CreateNonRootUser" "$NORM_USER_NAME"
+    log_ops_finish "User's Password" "$CreateNonRootUser" "$USER_PASS"
+    log_ops_finish "SSH Private Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem
+    log_ops_finish "SSH Public Key File" "$CreateSSHKey" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
+    log_ops_finish "SSH Key Passphrase" "$CreateSSHKey" "$KEY_PASS"    
+    if [[ "$RESET_ROOT_PWD" == "y" && "$USER_CREATION_ALONE" == "n" ]]; then
+        log_ops_finish "New root Password" "$ChangeRootPwd" "$PASS_ROOT"
+    fi
+    if [[ $HIDE_CREDENTIALS == "n" ]]; then
+        line_fill "$CHORIZONTAL" "$CLINESIZE"
+    fi
+
+    log_ops_finish_file_contents "SSH Private Key" "$SSH_DIR"/"$NORM_USER_NAME".pem
+    log_ops_finish_file_contents "SSH Public Key" "$SSH_DIR"/"$NORM_USER_NAME".pem.pub
+    
+    line_fill "$CHORIZONTAL" "$CLINESIZE"
+    center_reg_text "!!! DO NOT LOG OUT JUST YET !!!"
+    center_reg_text "Use another window to test out the above credentials"
+    center_reg_text "If you face issue logging in, check the log file to see what went wrong"
+    center_reg_text "Log file at ${LOGFILE}"
+
+    line_fill "$CHORIZONTAL" "$CLINESIZE"
+    echo
 
     if [[ $HIDE_CREDENTIALS == "y" ]]; then
-        center_reg_text "Issue the following command to see all credentials"
+        center_reg_text "Use the following command to see all credentials"
         center_reg_text "tail -n 20 ${LOGFILE}"
     fi
 

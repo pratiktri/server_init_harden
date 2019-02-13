@@ -6,18 +6,15 @@ I wanted to change my VPS(Virtual Private Server) provider and was testing out m
 This script is meant to save that time.
 
 ## *** __WARNING__ ***
----
 This script can potentially make your server inaccessible. 
 
-At the very least read the [FAQ section](https://github.com/pratiktri/init-li-harden#faq) before executing.
+At the very least, read the [FAQ section](https://github.com/pratiktri/init-li-harden#faq) before executing.
 
 If your connection gets reset during this operation, you WILL loose all access to the server.
 
----
-
 ## Status
 
-Beta testing. NOT production ready.
+Stable. Production ready.
 
 ## Usage
 
@@ -37,10 +34,9 @@ Beta testing. NOT production ready.
 The script is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VPS) as *__root__*.
 
 ```console
-root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && bash ./init-linux-harden.sh --username someusername --resetrootpwd --defaultsourcelist --quiet --hide-credentials
+root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && bash ./init-linux-harden.sh -d -q -hide
 
-root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && bash ./init-linux-harden.sh -u someusername -r -d -q -hide
-
+root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && bash ./init-linux-harden.sh --defaultsourcelist --quiet --hide-credentials
 ```
 
 > There are inherent risks involved with running scripts directly (without reviewing it first) from web - as done above. Everyone does it anyways, but you have been warned. 
@@ -56,9 +52,9 @@ Usage: sudo bash $0 [-u|--username username] [-r|--resetrootpwd] [--defaultsourc
   -u,     --username              Username for your server (If omitted script will choose an username for you)
   -r,     --resetrootpwd          Reset current root password
   -hide,  --hide-credentials      Credentials will hidden from screen and can ONLY be found in the logfile
-                                  eg - tail -n 20 logfile
+                                  eg: tail -n 20 logfile
   -d,     --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org
-  -ou,    --only-create-user      Only creates the user and its SSH authorizations
+  -ou,    --only-user             Only creates the user and its SSH authorizations
                                   NOTE: -r, -d would be ignored
 
 Example: bash ./linux_init_harden.sh --username myuseraccount --resetrootpwd
@@ -434,22 +430,27 @@ root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_har
 ## Todo
 
 ### Bug fixes
-- [x] ~~On successful restoration - delete the bkp files~~ (Abandoned - as it could be counter-productive)
-- [x] Investigate Warning - Ignoring file 'hetzner-mirror.list.29_01_2019-19_31_03_bak' in directory '/etc/apt/sources.list.d/' as it has an invalid filename extension
-- [x] What to do if creating .bkp file fails? Ans - fail that entire step
-- [x] Step 6 & 7 - Instead of checking if installation was successful or not - check if the the software we need is installed or not
 - [ ] fail2ban on Ubuntu 14.04 => need apply default-debian.conf to jail.local itself.
 - [ ] Exception handle - when curl https://ipinfo.io/ip fails
 
 ### Roadmap
-- [x] Update README - provide example of how it can be used from a non-root account.
-- [x] Update README - Warn that - If your connection gets reset during this operation, you WILL loose all access to the server.
-- [x] Update README - Add some screen captures
-- [x] Update README - Detail all the locations where backup files would be created
-- [x] Update README - Note that we never uninstall any software during restore operations
-- [x] New - Provide Flag - to NOT display credentials on screen (because - nosy neighbours)
-- [x] New - Schedule daily system update downloads
-- [x] New - Display time taken to complete all operations
-- [x] New - Provide flag to ONLY create a new user (sudo???) - when script is already run and you just want to create another user
+- [ ] Update README - Assumptions - TOFU, Trust on VPS provider
 - [ ] New - Enable LUKS (is it even worth it???)
 - [ ] New - DNSCrypt
+
+
+## License
+
+Copyright 2019 Pratik Kumar Tripathy
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
