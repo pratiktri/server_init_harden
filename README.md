@@ -45,12 +45,13 @@ Run the script with below option to see all available options:-
 root@host:~# bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
 
 Usage: sudo bash /dev/fd/63 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]
-  -u, --username            Username for your server (If omitted script will choose an username for you)
-  -r, --resetrootpwd        Reset current root password
-  -d, --defaultsourcelist   Updates /etc/apt/sources.list to download software from debian.org.
-                            NOTE - If you fail to update system after using it, you need to manually reset it. This script keeps a backup in the same folder.
+  -u, --username              Username for your server (If omitted script will choose an username for you)
+  -r, --resetrootpwd          Reset current root password
+  -hide, --hide-credentials   Credentials will hidden from the screen and can ONLY be found in the logfile (tail -n 20 /tmp/logfilename)
+  -d, --defaultsourcelist     Updates /etc/apt/sources.list to download software from debian.org
+                              NOTE - If you fail to update system after using it, you need to manually reset it. This script keeps a backup in the same folder
 
-Example: bash ./server_init_harden.sh --username myuseraccount --resetrootpwd
+Example: bash ./linux_init_harden.sh --username myuseraccount --resetrootpwd
 
 Below restrictions apply to username this script accepts - 
    - [a-zA-Z0-9] [-] [_] are allowed

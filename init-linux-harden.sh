@@ -373,6 +373,7 @@ function revert_create_user(){
     if [[ $exit_code -eq 0 ]]; then
         log_op_rev_status "Reverting - New User Creation" "SUCCESSFUL"
     else
+        file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - New User Creation"
     fi
 
@@ -390,6 +391,7 @@ function revert_create_ssh_key(){
     if [[ $exit_code -eq 0 ]]; then
         log_op_rev_status "Reverting - SSH Key Generation" "SUCCESSFUL"
     else
+        file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - SSH Key Generation"
     fi
 
@@ -416,6 +418,7 @@ function revert_secure_authorized_key(){
     if [[ $exit_code -eq 0 ]]; then
         log_op_rev_status "Reverting - SSH Key Authorization" "SUCCESSFUL"
     else
+        file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - SSH Key Authorization"
     fi
 
@@ -446,6 +449,7 @@ function revert_source_list_changes(){
     if [[ $exit_code -eq 0 ]]; then
         log_op_rev_status "Reverting - Source_list Changes" "SUCCESSFUL"
     else
+        file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - Source_list Changes"
     fi
 
@@ -491,7 +495,7 @@ function revert_config_fail2ban(){
     else
         # If /etc/fail2ban/jail.local/_bkp does NOT exists then this IS the 1st time script is run
         # You probably do NOT want the jail.local > which might be corrupted > which is why you are here
-        file_log "Removing /etc/fail2ban/jail.local as that might have been the culprit in this failure"
+        file_log "Removing /etc/fail2ban/jail.local"
         rm /etc/fail2ban/jail.local 2>> "$LOGFILE" >&2
         set_exit_code $?
     fi
@@ -510,6 +514,7 @@ function revert_config_fail2ban(){
     if [[ $exit_code -eq 0 ]]; then
         log_op_rev_status "Reverting - Fail2ban Config" "SUCCESSFUL"
     else
+        file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - Fail2ban Config"
     fi
 
@@ -536,6 +541,7 @@ function revert_schedule_updates() {
     if [[ $exit_code -eq 0 ]]; then
         log_op_rev_status "Reverting - Daily Update Download" "SUCCESSFUL"
     else
+        file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - Daily Update Download"
     fi
 
@@ -576,6 +582,7 @@ function revert_ssh_only_login(){
     if [[ $exit_code -eq 0 ]]; then
         log_op_rev_status "Reverting - SSH-only Login" "SUCCESSFUL"
     else
+        file_log "Error Code - ${exit_code}"
         log_revert_error "Reverting - SSH-only Login"
     fi
 
@@ -993,10 +1000,18 @@ fi
 
 setup_step_start "${STEP_TEXT[5]}"
 {
+    file_log "Cleaning apt cache"
+    apt-get -y clean && apt-get -y autoclean && apt-get -y autoremove
+
+    file_log "Updating apt-get"
     apt-get update
+
+    file_log "Downloading apt updates"
     export DEBIAN_FRONTEND=noninteractive ; apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
     apt-get install -y sudo curl screen ufw fail2ban
     set_exit_code $?
+
+    file_log "To install updates, run - sudo apt-get dist-upgrade"
 } 2>> "$LOGFILE" >&2
 
 setup_step_end "${STEP_TEXT[5]}"
