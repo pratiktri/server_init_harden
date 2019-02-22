@@ -2,19 +2,18 @@
 Bash script that automates server security hardening on a new Linux server.
 
 I wanted to change my VPS(Virtual Private Server) provider and was testing out many providers and many Linux flavours on those VPSes. But before doing anything those servers needed to be given basic amount security and this involved a set of repetitive commands on terminal. Depending on network speed and number of mis-types, these took between 30-90 minutes to perform. 
-
 This script is meant to save that time.
 
-## *** __WARNING__ ***
-This script can potentially make your server inaccessible. 
-
-At the very least, read the [FAQ section](https://github.com/pratiktri/init-li-harden#faq) before executing.
-
-If your connection gets reset during this operation, you WILL loose all access to the server.
+It is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VPS) as *__root__*.
 
 ## Status
 
 Stable. Production ready.
+
+## *** __WARNING__ ***
+This script can potentially make your server inaccessible.
+
+If your network connection gets reset during this operation; you, most likely, __won't be able to log back in to the server__.
 
 ## Usage
 
@@ -31,8 +30,6 @@ Stable. Production ready.
 
 ### Examples
 
-The script is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VPS) as *__root__*.
-
 ```console
 root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && bash ./init-linux-harden.sh -d -q -hide
 
@@ -43,7 +40,7 @@ root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_har
 
 ### Available Options
 
-Run the script with below option to see all available options:-
+Run the script with below option (--help or -h) to see all available options:-
 
 ```console
 root@host:~# bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
@@ -65,7 +62,13 @@ Below restrictions apply to usernames -
    - NO spaces.
 ```
 
-## What does it do ?
+### Script completes successfully - What now? 
+ - Copy user's password - you will need them when doing any "sudo" operations
+ - Save the SSH public key and private key to separate files on your system
+ - Save the SSH passphrase where you save all your passwords (somewhere safe)
+ - Use an SSH client to login to your server using the SSH Private Key and passphrase
+
+## What does the script do ?
 Script performs the following operations:-
 
 1. [Create non-root user and give it "sudo" privilege](https://github.com/pratiktri/init-li-harden#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
@@ -141,9 +144,9 @@ If the username provided already exists, then the script will terminate without 
 
 When accepting username through "--username", __*script actively rejects special characters in the name*__ because bash does not act well with special characters. The values accepted by the script [a-zA-Z0-9_-] i.e., alphanumeric and [_] and [-]
 
-If "--username" is not provided, __*script will randomly generate an username for you*__. Script generated usernames are 9 character long and are alphanumeric (i.e., numbers & English characters).
+If "--username" is not provided, __*script will randomly generate an username for you*__. Script generated usernames are 8 characters long and are alphanumeric (i.e., numbers & English characters). First 6 characters are random English lower-case alphabets and last 2 characters random numbers. Username should not be too difficult to remember.
 
-Password for the user is __always__ randomly generated. Passwords are 15 character long and are alphanumeric as well.
+Password for the user is __always__ auto generated. Passwords are 20 character long, containing a mixture of special-symbols, English upper & lower case characters and numbers.
 
 #### Error Handling
 
@@ -167,7 +170,7 @@ You need the following 3 to be able to access the server after the script is don
 
  These 3 will be diplayed on screen at the end of the script. Copy them and __keep them safe. Without these you won't be able to access the server.__
 
-We use OpenSSH keyformat and ed25519 algorithm to generate ours. You can read the reason for that [here](https://security.stackexchange.com/a/144044) and [here](https://stribika.github.io/2015/01/04/secure-secure-shell.html). For additional security the key is secured by a passphrase. This passphrase is randomly generated. Passphrase are 15 character long and are alphanumeric. Algorithm used for user's password and SSH Private Key's passphrase are the same.
+We use OpenSSH keyformat and ed25519 algorithm to generate ours. You can read the reason for that [here](https://security.stackexchange.com/a/144044) and [here](https://stribika.github.io/2015/01/04/secure-secure-shell.html). For additional security the key is secured by a passphrase. This passphrase is auto generated. Passphrase are 20 character long, containing a mixture of special-symbols, English upper & lower characters and numbers.
 
 Generated keys are placed in ".ssh" sub-directory of the user's (created in step 1 above) home-directory, i.e., /home/*__[username]__*/.ssh/
 
@@ -311,7 +314,7 @@ Since, VPS providers sends you the password of your VPS's *root* user in email i
 
 Also most VPS providers these days allow you to provide SSH Public Key in their website. If you have done that you can skip this step. **It is disabled by default anyways**.
 
-To change your *root* password provide option *-r* or *--resetrootpw*. *root* password will be randomly generated. Passwords are 15 character long and are alphanumeric.
+To change your *root* password provide option *-r* or *--resetrootpw*. *root* password will be auto generated. Passwords are 20 character long, containing a mixture of special-symbols, English upper & lower characters and numbers.
 
 #### Error Handling
 
@@ -434,9 +437,12 @@ root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_har
 - [ ] Exception handle - when curl https://ipinfo.io/ip fails
 
 ### Roadmap
-- [ ] Update README - Assumptions - TOFU, Trust on VPS provider
+- [ ] Update README - Assumptions - TOFU, Trust on VPS provider vis-a-vis creating SSH keys on the server
+- [ ] New - Add commented license to script itself
+- [ ] New - Add github URL on usage()
 - [ ] New - Enable LUKS (is it even worth it???)
-- [ ] New - DNSCrypt
+- [ ] New - DNSCrypt or 1.1.1.1 ?
+- [ ] New - Add bash alias (alias install="sudo apt-get dist-upgrade && sudo apt-get install")
 
 
 ## License
