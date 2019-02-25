@@ -99,7 +99,7 @@ Step 2 & Step 5 are most time consuming operations.
 
 If you are stuck on Step 5 for more than 10 minutes, something went wrong in Step 4. Stop (ctrl + c) the script and check log file to see what went wrong.
 
-Step 8 is the most dangerous operation. 
+Step 10 is the most dangerous operation. 
 
 ## Error Handling
 Since the script has the potential to make you loose access to your server, it takes a number of steps to recover from an error.
@@ -114,9 +114,9 @@ Back up file name = (Original File Name) + "." + (Script start timestamp in '%d_
 So, if the original file name was *sshd_config* and the script was started at 25th January 2019 09:15:25, then the backup files name would be *sshd_config.25_01_2019-09_15_25_bak*
 
 ### Recovery
-Script *tries* to recover from an error if it can determine that an error has occured. What it does to recover depends on which step the error has occured.
+Script *tries* to recover from an error if it can determine that an error has occured. What it does to recover varies and it depends on which step the error has occured (read details of each step).
 
-**Step 9 (Alter /etc/ssh/sshd_config) is where most danger resides. If this step fails & script can not successfully recovery - then you'll most likely loose all access to your system**.
+**Step 10 (Alter /etc/ssh/sshd_config) is where most danger resides. If this step fails AND script can not successfully recovery - then you'll most likely loose all access to your system**.
 
 ## Screenshots
 ### Operation successful and credentials displayed on screen
@@ -168,7 +168,7 @@ You need the following 3 to be able to access the server after the script is don
 * Private Key
 * Passphrase for the Key
 
- These 3 will be diplayed on screen at the end of the script. Copy them and __keep them safe. Without these you won't be able to access the server.__
+ These 3 will be diplayed on screen at the end of the script (unless, you have opted to have it hidden with _-hide_ option). Copy them and __keep them safe. Without these you won't be able to access the server.__
 
 We use OpenSSH keyformat and ed25519 algorithm to generate ours. You can read the reason for that [here](https://security.stackexchange.com/a/144044) and [here](https://stribika.github.io/2015/01/04/secure-secure-shell.html). For additional security the key is secured by a passphrase. This passphrase is auto generated. Passphrase are 20 character long, containing a mixture of special-symbols, English upper & lower characters and numbers.
 
@@ -189,7 +189,7 @@ SSH Public Key is then *appended* to /home/*__[username]__*/.ssh/authorized_keys
 
 
 ### 3. Secure "authorized_keys" file
-"authorized_keys" file present in user's .ssh sub-directory contains the Public Key values. These Public Key values are used to authenticate user logins. Since, this is an important file we need to secure it tight. 
+"authorized_keys" file present in user's .ssh sub-directory contains the Public Key values. These Public Key values are used by Linux to authenticate user logins. Since, this is an important file we need to secure it tight. 
 
 Following are the file access restrictions that the script applies:-
 * Make *root* user the owner of /home/*__[username]__*/.ssh/ directory and all files inside it.
@@ -212,7 +212,7 @@ Following are the file access restrictions that the script applies:-
 
 ### 4. [Optionally] Reset the url  for apt repo from VPS provided CDN to OS provided ones
 
-Most VPS provider change the location from which operating system downloads software from (i.e. *apt* repository); usually to CDNs that are maintained by them. While, this greatly improves time taken to install applications, it does come with its security implications (what if they insert tracker/sniffer in application?). 
+Most VPS provider change the location from which operating system downloads software from (i.e. *apt* repository); usually to CDNs that are maintained by them. While, this greatly improves time taken to install applications, it does come with its security implications (what if they insert tracker/sniffer in an application?). 
 
 However, one can also argue that if the OS (i.e. Linux) is installed by the providers, then OS itself is a more likely place where they might want to insert something dirty.
 
@@ -224,9 +224,9 @@ This is disabled by default.
 
 #### Error Handling
 
-> __Failure Impact__ - In the worst case, you will not be able to update or install applications through *apt*. In the best case, Service providers CDN will continue to be used for *apt* to install & update applications. Script will continue to next step after restoration
+> __Failure Impact__ - In the worst case, you will not be able to update or install applications through *apt*. In the best case, Service providers CDN will continue to be used for *apt* to install & update applications. In either case, script will continue to next step after restoration.
 > 
-> __Restoration__ - Before execution, a back up of sources.list file was made. During restoration, this back up file is copied (over-written) over to sources.list file.
+> __Restoration__ - Before execution, a back up of sources.list file was made. During restoration, this back up file is copied (over-written) to sources.list.
 > 
 > __Impact of Restoration Failure__ - You may not be able to install or update the system. Manually check if any *_bkp file exists in /etc/apt/ directory. If multiple file exist - use the most recent file and rename it to /etc/apt/sources.list
 > 
@@ -247,14 +247,14 @@ Pretty self-explanatory.
 > 
 > __After Error__ - Script continues to next step.
 
-NOTE - As it is evident from above script does not uninstalled already installed programs even when error occors in this step or any other steps. Cause, you might have installed those programs before running the script or those programs might have been preloaded by the OS itself - too many variables to consider.
+NOTE - As it is evident from above, script does not uninstalled already installed programs even when error occors in this step or any other step. Because, you might have installed those programs before running the script or those programs might have been preloaded by the OS itself - too many variables to consider.
 
 
 
 ### 6. Configure UFW
 [UFW(**U**ncomplicated **F**ire**W**all)](https://www.digitalocean.com/community/tutorials/how-to-setup-a-firewall-with-ufw-on-an-ubuntu-and-debian-cloud-server) makes it easy to manage what kind of internet traffic enters or leaves the server. Without this program you would have to deal with Linux's iptables (which I can not understand at all).
 
-This script sets up UFW so that only __ssh__(required for user login), __http__(required for any web application) & __https__(also required for any web application) __traffic are allowed in and out__ of the server. All other traffic are blocked.
+This script sets up UFW so that only __ssh__(required for user login), __http__(required for web applications) & __https__(also required for web applications) __traffic are allowed in and out__ of the server. All other traffic are blocked.
 
 #### Error Handling
 
@@ -274,9 +274,9 @@ While UFW restricts access to ports, the ports that are required (and are allowe
 Fail2ban watches traffic coming through the allowed ports to determine if it is indeed a legitimate one. This determination is usually done by analyzing various *log files* being generated by Linux and other applications running on the server. If anything suspicious is found then after a certain number of illegitimate attempts the intruder(IP) is banned. Ban is then lifted after a desired amount of time.
 
 This script sets up Fail2ban as following:-
-* default ban time is 5 hours, 
-* Whitelists your server's IP from detection (uses https://ipinfo.io/ip to determine the IP),
-* sets (backend = polling). *polling* is an algoritm used to check if the *log files* are updated. This algorithm does not require any additional software and is faster option to choose for our configuration.
+* default ban time is 5 hours (2592000 seconds), 
+* Whitelists your server's IP from detection (uses https://ipinfo.io/ip to determine server's IP),
+* Sets (backend = polling). *polling* is an algoritm used to notify fail2ban when the log files are updated. This algorithm does not require any additional software and is faster option to choose for our configuration.
 * Explicitly enables protection for *ssh* with (maxretry = 3) & (bantime = 2592000)
 
 #### Error Handling
@@ -292,7 +292,7 @@ This script sets up Fail2ban as following:-
 
 
 ### 8. Schedule cron for daily system update
-While it is a bad idea to schedule automatic installation of updates ([read more here](https://debian-administration.org/article/162/A_short_introduction_to_cron-apt)), sizable amount of server administration time can be saved by *downloading* updates when no one is looking.
+While it is a bad idea to schedule automatic installation of updates ([read more here](https://debian-administration.org/article/162/A_short_introduction_to_cron-apt)), sizable amount of server administration time can be saved by *downloading* updates automatically.
 
 In this step we schedule a daily crontab (/etc/cron.daily/linux_init_harden_apt_update.sh) to download updates. You would want to manually do the installation running the below command.
 
@@ -310,9 +310,9 @@ user@host:~$ sudo apt-get dist-upgrade
 > __After Error__ - Continue to next step.
 
 ### 9. [Optionally] Reset root password
-Since, VPS providers sends you the password of your VPS's *root* user in email in plain text. So, password needs to be changed immediately. **But, since we will disable *root* login AND password login in the next step, changing *root* password might be an overkill**. But, still...
+Some VPS providers send you the password of your VPS's *root* user in email in plain text. If so, that password needs to be changed immediately. **But, we will disable *root* login AND password login in the next step, so changing *root* password might be a slight overkill**. But, still...
 
-Also most VPS providers these days allow you to provide SSH Public Key in their website. If you have done that you can skip this step. **It is disabled by default anyways**.
+Also, most VPS providers these days allow you to provide SSH Public Key in their website. If you have done that you can skip this step. **It is disabled by default anyways**.
 
 To change your *root* password provide option *-r* or *--resetrootpw*. *root* password will be auto generated. Passwords are 20 character long, containing a mixture of special-symbols, English upper & lower characters and numbers.
 
@@ -351,45 +351,46 @@ This step contines from step 3 to harden our ssh login. Here, we edit */etc/ssh/
 ### 11. Display Summary
 All the generated username, passwords, SSH Key location & SSH Keys themselves are displayed on the screen.
 
-This might not be desired (nosy neighbours), on future versions you might find option to NOT show the details on screen and find them from the log file.
+This might not be desired (nosy neighbours) however. To NOT show the details on screen and find them from the log file use *-hide* option.
 
-NOTE - while we login through SSH Keys, you will still be asked for your password (after logging in) while installing softwares and other operations. So, you NEED ALL of the information displayed on the screen.
+NOTE - while we login through SSH Keys, you will still be asked for your password (after logging in) while installing softwares and for other administrative operations. So, you NEED ALL of the information displayed on the screen.
 
 The logfile is located in /tmp/ directory - thus will be removed when server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen as well.
 
 ## FAQ
 Q - Is the script idempotent?
 
-Ans - NO.
+Ans - No.
 > __Idempotency__
 > 
 >    An operation is _idempotent_ if the result of performing it once is exactly the same as the result of performing it repeatedly without any intervening actions.
 
 Q - Why is it not idempotent?
 
-Ans - We take backup of the file which stays on your server after operations. After taking back up of the file - __script sometimes comments out older configuration__. This is specifically true for [Step 4](https://github.com/pratiktri/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step") where we comment out older configurations and append new ones to the end of the file. Also, for the SSH configuration file (/etc/ssh/sshd_conf) where we comment out the line of configuration and add the new configuration below the commented out line. So, if we re-run the script multiple times, those changes would compound as listed below. 
+Ans - We take backup of configuration files, which stay on your server after operations. After taking back up of the file - __script sometimes comments out older configuration__. This is specifically true for [Step 4](https://github.com/pratiktri/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step") where we comment out older configurations and append new ones to the end of the file. Also, for the SSH configuration file (/etc/ssh/sshd_conf) where we comment out the line of configuration and add the new configuration below the commented out line. So, if we re-run the script multiple times, those changes would compound. Details of all such operatons are listed below:-
 
  1. Multiple backup files of _sources.list_ in _/etc/apt/_ directory. eg - _sources.list.13_02_2019-01_21_07_bak_ for each execution.
  2. Many commented out lines on _/etc/apt/sources.list_ file.
- 3. Multiple backup files of ALL (.list) files under _/etc/apt/sources.d/_ directory.
+ 3. Multiple backup files of (.list) files under _/etc/apt/sources.d/_ directory.
  4. Many commented out lines on ALL (.list) files under _/etc/apt/sources.d/_ directory.
- 5. If softwares would be installed or updated _sudo_, _curl_, _screen_, _ufw_, _fail2ban_.
+ 5. Some softwares would be installed or updated _sudo_, _curl_, _screen_, _ufw_, _fail2ban_.
  6. *One* backup of _/etc/fail2ban/jail.conf_ file.
  7. Multiple backups of _/etc/fail2ban/jail.local_ file
  8. Multiple backups of _/etc/fail2ban/jail.d/defaults-debian.conf_ file
  9. Multiple backups of _sshd_config_ file in _/etc/sshd/_ directory
 
 Q - What would happen if I rerun the script multiple times?
+
 Ans - 
  * A new user would be created per execution
- * __All__ changes you have made to _/etc/apt/* /*.list_ files will be __overwritten__.
- * __All__ changes to _/etc/fail2ban/jail.conf_ file would be skipped (file __would NOT be read__ by fail2ban anymore).
- * Following configuration changes to _/etc/fail2ban/jail.local_ will be __overwitten__:- 
-    1. [DEFAULT] bantime
-    2. [DEFAULT] backend
-    3. [DEFAULT] ignoreip
- * __All__ changes to _/etc/fail2ban/jail.d/defaults-debian.conf_ will be __overwritten__.
- * Following changes to _/etc/sshd/sshd_config_ file would be overwritten
+ * All changes you have made to **_/etc/apt/\*/\*.list_** files will be __overwritten__.
+ * Changes to **_/etc/fail2ban/jail.conf_** file would not be read by fail2ban.
+ * Following configuration changes to **_/etc/fail2ban/jail.local_** file (under [DEFAULT] section) will be __overwitten__:- 
+    1. bantime
+    2. backend
+    3. ignoreip
+ * All changes to **_/etc/fail2ban/jail.d/defaults-debian.conf_** will be __overwritten__.
+ * Following changes to **_/etc/sshd/sshd_config_** file would be overwritten
     1. PermitRootLogin
     2. PasswordAuthentication
     3. AuthorizedKeysFile
@@ -397,22 +398,22 @@ Ans -
 Q - What are the files that the script creates or edits?
 
 Ans - Following is the list (in order of execution):-
-1. New - /home/[_new-username_]/.ssh/[_new-username_].pem
-2. New - /home/[_new-username_]/.ssh/[_new-username_].pem.pub
-3. New - /home/[_new-username_]/.ssh/authorized_keys
-4. New - /etc/apt/sources.list.[_execution-timestamp_]_bkp
-5. Edit - /etc/apt/sources.list
-6. New - /etc/apt/sources.d/[anydotlistfile._list_].[_execution-timestamp_]_bkp
-7. Edit - /etc/apt/sources.d/[anydotlistfile._list_]
-8. New if it __does not__ exist - _/etc/fail2ban/jail.local_
-9. New - /etc/fail2ban/jail.conf.[_execution-timestamp_]_bkp
-10. New if _/etc/fail2ban/jail.local_ __exists__ - _/etc/fail2ban/jail.local.[_execution-timestamp_]_bkp_
-11. Edit - _/etc/fail2ban/jail.local_
-12. New - _/etc/fail2ban/jail.d/defaults-debian.conf[_execution-timestamp_]_bkp_
-13. Edit - _/etc/fail2ban/jail.d/defaults-debian.conf_
-14. New if __does not__ exist - /etc/cron.daily/linux_init_harden_apt_update.sh
-15. New - _/etc/ssh/sshd_config[_execution-timestamp_]_bkp_
-16. Edit - _/etc/ssh/sshd_config_
+1. New   - */home/[new-username]/.ssh/[new-username].pem*
+2. New   - */home/[new-username]/.ssh/[new-username].pem.pub*
+3. New   - */home/[new-username]/.ssh/authorized_keys*
+4. New   - */etc/apt/sources.list.[execution-timestamp]_bkp*
+5. Edit  - */etc/apt/sources.list*
+6. New   - */etc/apt/sources.d/[anydotlistfile.list].[execution-timestamp]_bkp*
+7. Edit  - */etc/apt/sources.d/[anydotlistfile.list]*
+8. New   - If it does not exist - */etc/fail2ban/jail.local*
+9. New   - /etc/fail2ban/jail.conf.[execution-timestamp]_bkp
+10. New  - If */etc/fail2ban/jail.local* exists - */etc/fail2ban/jail.local.[execution-timestamp]_bkp*
+11. Edit - */etc/fail2ban/jail.local*
+12. New  - */etc/fail2ban/jail.d/defaults-debian.conf[execution-timestamp]_bkp*
+13. Edit - */etc/fail2ban/jail.d/defaults-debian.conf*
+14. New  - If does not exist - */etc/cron.daily/linux_init_harden_apt_update.sh*
+15. New  - */etc/ssh/sshd_config.[execution-timestamp]_bkp*
+16. Edit - */etc/ssh/sshd_config*
 
 Q - Why comment out entire files in /etc/apt/ instead of just deleting them and creating new ones with required configurations?
 
@@ -420,14 +421,16 @@ Ans - If there was error creating backup files, you would have no way to restore
 
 Q - Can I execute it as a non-root user?
 
-Ans - User belongs to "sudo" group => Yes
-      User does not belong to "sudo" group => No
+Ans 
+User belongs to "sudo" group => Yes
+
+User does not belong to "sudo" group => No
 
 Run the script with "sudo" privileges:-
 ```console
-root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh --username someusername --resetrootpwd --defaultsourcelist --quiet --hide-credentials
+root@host:~$ wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh --username someusername --resetrootpwd --defaultsourcelist --quiet --hide-credentials
 
-root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh -u someusername -r -d -q -hide
+root@host:~$ wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh -u someusername -r -d -q -hide
 ```
 
 ## Todo
