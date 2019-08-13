@@ -75,6 +75,8 @@ case "$OS" in
             DEB_VER_STR="jessie"
         elif [[ "$VER" -eq 9 ]]; then
             DEB_VER_STR="stretch"
+        elif [[ "$VER" -eq 10 ]]; then
+            DEB_VER_STR="buster" 
         else
             printf "This script only supports Debian 8 and Debian 9\\n"
             printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10\\n"
