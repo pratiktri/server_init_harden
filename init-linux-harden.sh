@@ -1,18 +1,33 @@
 #!/etc/bin/env bash
 
+# Copyright 2019 Pratik Kumar Tripathy
 
-# TODO - Create a function to make backup files
-    # use basename & dirname to achieve this
-    # use "cp -p" for the copying
-# TODO - Consider using a single folder for all the backup files
-    # /var/tmp/[script-name][date+timestamp]
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#        http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # TODO - Use "logger" to log some of the messages to syslog
     # Add another param to log function to add stuff to syslog
 # TODO - Update "usage" function to keep the help-display in sync with bash-help format
     # optionals in []
     # more than 1 option in ...
 # TODO - Exit when creating log file fails
-    
+
+#TODO - Test backup_file() for revert_source_list_changes
+#TODO                          revert_config_fail2ban
+#TODO                          revert_ssh_only_login
+
+#TODO DNS
+##  Implement DNS change logic
+##  Add another option --CloudflareDNS -cf
 
 SCRIPT_NAME=linux_init_harden
 SCRIPT_VERSION=1.0
@@ -448,12 +463,10 @@ function revert_source_list_changes(){
 
     file_log "Reverting Source_list Changes..."
 
-    unalias cp &>/dev/null
-
     if [[ -f /etc/apt/sources.list"${BACKUP_EXTENSION}" ]]; then
         file_log "Restoring /etc/apt/sources.list${BACKUP_EXTENSION} into /etc/apt/sources.list ..."
-        cp -rf /etc/apt/sources.list"${BACKUP_EXTENSION}" /etc/apt/sources.list 2>> "$LOGFILE" >&2
-        set_exit_code $?
+
+        backup_file "/etc/apt/sources.list${BACKUP_EXTENSION}" "/etc/apt/sources.list" "-rf"
     fi
 
     SOURCE_FILES_BKP=(/etc/apt/source*/*.list"$BACKUP_EXTENSION")
@@ -461,8 +474,7 @@ function revert_source_list_changes(){
         for file in "${SOURCE_FILES_BKP[@]}";
         do
             file_log "Restoring ${file} into ${file//$BACKUP_EXTENSION/} ..."
-            cp -rf "$file" "${file//$BACKUP_EXTENSION/}" 2>> "$LOGFILE" >&2
-            set_exit_code $?
+            backup_file "$file" "${file//$BACKUP_EXTENSION/}" "-rf"
         done
     fi
 
@@ -507,14 +519,12 @@ function revert_config_fail2ban(){
 
     file_log "Reverting Fail2ban Config..."
 
-    unalias cp &>/dev/null
-
     if [[ -f /etc/fail2ban/jail.local"$BACKUP_EXTENSION" ]]; then
         # If /etc/fail2ban/jail.local/_bkp exists then this is NOT the 1st time script is run
         # So, you would probaly want to get the last existing jail.local file back
         file_log "Restoring /etc/fail2ban/jail.local${BACKUP_EXTENSION} into /etc/fail2ban/jail.local"
-        cp -rf /etc/fail2ban/jail.local"$BACKUP_EXTENSION" /etc/fail2ban/jail.local 2>> "$LOGFILE" >&2
-        set_exit_code $?
+
+        backup_file "/etc/fail2ban/jail.local${BACKUP_EXTENSION}" "/etc/fail2ban/jail.local" "-rf"
     else
         # If /etc/fail2ban/jail.local/_bkp does NOT exists then this IS the 1st time script is run
         # You probably do NOT want the jail.local > which might be corrupted > which is why you are here
@@ -525,8 +535,8 @@ function revert_config_fail2ban(){
 
     if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" ]]; then
         file_log "Restoring /etc/fail2ban/jail.d/defaults-debian.conf${BACKUP_EXTENSION} into /etc/fail2ban/jail.d/defaults-debian.conf"
-        cp -rf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION" /etc/fail2ban/jail.d/defaults-debian.conf 2>> "$LOGFILE" >&2
-        set_exit_code $?
+
+        backup_file "/etc/fail2ban/jail.d/defaults-debian.conf${BACKUP_EXTENSION}" "/etc/fail2ban/jail.d/defaults-debian.conf" "-rf"
     fi
 
     file_log "Stopping fail2ban service ..."
@@ -585,11 +595,9 @@ function revert_ssh_only_login(){
     file_log "Reverting SSH-only Login..."
 
     if [[ -f /etc/ssh/sshd_config"$BACKUP_EXTENSION" ]]; then
-        unalias cp &>/dev/null
-
         file_log "Restoring /etc/ssh/sshd_config${BACKUP_EXTENSION} into /etc/ssh/sshd_config ..."
-        cp -rf /etc/ssh/sshd_config"$BACKUP_EXTENSION" /etc/ssh/sshd_config 2>> "$LOGFILE" >&2
-        set_exit_code $?
+
+        backup_file "/etc/ssh/sshd_config${BACKUP_EXTENSION}" "/etc/ssh/sshd_config" "-rf"
     fi
 
     file_log "Restarting ssh service ..."
@@ -847,6 +855,17 @@ function generate_random_pwd() {
     echo "$(< /dev/urandom tr -cd 'a-zA-Z0-9~!@#$%^&*()_+-=' | head -c ${1})"
 }
 
+function backup_file(){
+    local fileBackUpFrom=$1
+    local fileBackUpTo=$2
+    local copyOptions=$3
+
+    unalias cp &>/dev/null
+    cp -p "${copyOptions}" "${fileBackUpFrom}" "${fileBackUpTo}" 2>> "$LOGFILE" >&2
+
+    set_exit_code $?
+}
+
 
 ##############################################################
 # Step 1 - Create non-root user
@@ -962,8 +981,8 @@ if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
     setup_step_start "${STEP_TEXT[4]}"
     {
         file_log "Backing up /etc/apt/sources.list file to /etc/apt/sources.list${BACKUP_EXTENSION}"
-        cp /etc/apt/sources.list /etc/apt/sources.list"${BACKUP_EXTENSION}"
-        set_exit_code $?
+
+        backup_file "/etc/apt/sources.list" "/etc/apt/sources.list${BACKUP_EXTENSION}"
 
         file_log "Commenting out everthing in /etc/apt/sources.list"
         sed -i "1,$(wc -l < /etc/apt/sources.list) s/^/#/" /etc/apt/sources.list
@@ -1024,8 +1043,8 @@ UBUNTU
             for file in "${SOURCE_FILES[@]}";
             do
                 file_log "Backing up ${file} file to ${file}${BACKUP_EXTENSION}"
-                cp "$file" "$file""${BACKUP_EXTENSION}"
-                set_exit_code $?
+
+                backup_file "${file}" "${file}${BACKUP_EXTENSION}"
 
                 file_log "Commenting out the ${file}"
                 sed -i "1,$(wc -l < "$file") s/^/#/" "$file"
@@ -1106,16 +1125,14 @@ if [[ $(dpkg -l | grep -c fail2ban) -gt 0 ]]; then
     {
         if [[ -f /etc/fail2ban/jail.local ]]; then
             file_log "Backing up /etc/fail2ban/jail.local to /etc/fail2ban/jail.local${BACKUP_EXTENSION}"
-            cp /etc/fail2ban/jail.local /etc/fail2ban/jail.local"$BACKUP_EXTENSION"
-            set_exit_code $?
+
+            backup_file "/etc/fail2ban/jail.local" "/etc/fail2ban/jail.local${BACKUP_EXTENSION}"
         else
             file_log "Copying /etc/fail2ban/jail.conf to /etc/fail2ban/jail.local"
-            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-            set_exit_code $?
-
+            backup_file "/etc/fail2ban/jail.conf" "/etc/fail2ban/jail.local"
+            
             file_log "Backing up /etc/fail2ban/jail.conf to /etc/fail2ban/jail.conf${BACKUP_EXTENSION}"
-            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.conf"$BACKUP_EXTENSION"
-            set_exit_code $?
+            backup_file "/etc/fail2ban/jail.conf" "/etc/fail2ban/jail.conf${BACKUP_EXTENSION}"
         fi
 
         # Do not do anything if copying jail.conf to jail.local failed
@@ -1144,8 +1161,8 @@ if [[ $(dpkg -l | grep -c fail2ban) -gt 0 ]]; then
 
         if [[ -f /etc/fail2ban/jail.d/defaults-debian.conf ]]; then
             file_log "Backing up /etc/fail2ban/jail.d/defaults-debian.conf to /etc/fail2ban/jail.d/defaults-debian.conf${BACKUP_EXTENSION}"
-            cp /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf"$BACKUP_EXTENSION"
-            set_exit_code $?
+
+            backup_file "/etc/fail2ban/jail.d/defaults-debian.conf" "/etc/fail2ban/jail.d/defaults-debian.conf${BACKUP_EXTENSION}"
         fi
         
         file_log "Enabling jails in /etc/fail2ban/jail.d/defaults-debian.conf"
@@ -1325,8 +1342,7 @@ setup_step_start "${STEP_TEXT[3]}"
 {
     # Backup the sshd_config file
     file_log "Backing up /etc/ssh/sshd_config file to /etc/ssh/sshd_config$BACKUP_EXTENSION"
-    cp /etc/ssh/sshd_config /etc/ssh/sshd_config"$BACKUP_EXTENSION"
-    set_exit_code $?
+    backup_file "/etc/ssh/sshd_config" "/etc/ssh/sshd_config$BACKUP_EXTENSION"
 
     # Remove root login
     file_log "Removing root login -> PermitRootLogin no"
