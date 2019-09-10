@@ -11,21 +11,17 @@ This script is intended to be executed _**immediately**_ after you have access t
 
 Stable. Production ready.
 
-## *** __WARNING__ ***
+## ***WARNING***
 
-This script can potentially make your server/VPS inaccessible.
+This script can potentially make your server inaccessible.
 
-If your network connection gets reset during this operation; you, most likely, **won't be able to log back in to the server**.
+**If your network connection gets reset during this operation; you won't be able to log back in to the server**.
 
 ### Trust on VPS
-We assume that you trust your VPS provider. 
 
-What does that mean?
+This script generates username, password (for the user AND _root_), SSH Key, SSH Key Passphrase **on the server**. Infact, we store both the SSH Keys (Public & Private) on the server after the operation completes. Your VPS _can_ see all of these.
 
-This script generates username, password (for the user AND _root_), SSH Key, SSH Key Passphrase __on the server__. Infact, we store both the SSH Keys (Public & Private) on the server after the operation completes. Again, all of these are available in the log file that the script generates as well. Your VPS _can_ see all of these.
-
-So, if you think your server/VPS provider might snoop on you - all these security won't really matter. The security this script provides is from actors other than your server/VPS and you.
-
+So, if you think your server/VPS provider might snoop on you - all these security won't really matter. The security this script provides is from actors other than your server(VPS) and you.
 
 ## Usage
 
@@ -34,10 +30,10 @@ So, if you think your server/VPS provider might snoop on you - all these securit
 -   One of the following Linux flavours
     -   Debian 8.x
     -   Debian 9.x
-    -   Ubuntu 14.x
+    -   Debian 10.x
     -   Ubuntu 16.x
     -   Ubuntu 18.x
--   _wget_ should be installed (comes preinstalled on the above OSes anyways)
+-   _wget_ should be installed (comes preinstalled on the above OS)
 -   _root_ access to the server
 
 ### Examples
@@ -55,7 +51,7 @@ root@host:~# wget -q https://raw.githubusercontent.com/pratiktri/server_init_har
 Run the script with below option (--help or -h) to see all available options:-
 
 ```console
-root@host:~# bash <(wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O -) --help
+root@host:~# init-linux-harden.sh --help
 
 Usage: sudo bash $0 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]
   -u,     --username              Username for your server (If omitted script will choose an username for you)
@@ -74,28 +70,50 @@ Below restrictions apply to usernames -
    - NO spaces.
 ```
 
-### Your script completed successfully - Now what?
+### Script completed successfully - Now what?
 
--   Copy user's password - you will need them when doing any "sudo" operations
--   Save the SSH public key and private key to separate files on your system
--   Save the SSH passphrase where you save all your passwords (somewhere safe)
--   Use an SSH client to login to your server using the SSH Private Key and passphrase
+-   Copy the following details from screen or logfile:-
+
+    1. User password
+    2. SSH Public Key
+    3. SSH Private Key
+    4. SSH Passphrase
+    5. New _root_ password (if you chose to change it with `-r`)
+
+-   From a terminal login using the following command:-
+
+```console
+    $ ssh -i [full-path-of-ssh-private-key-file] [username]@[server-ip]
+    Enter passphrase for key '[full-path-of-ssh-private-key-file]':
+```
+
+At the above prompt type in the SSH Passphrase.
+
+```console
+    $ sudo apt-get upgrade
+    [sudo] password for [username]:
+```
+
+Provide user-password at this prompt.
+
+-   If the above 2 commands ran successfully - everything went great for us.
+-   If not - check the log file for errors.
 
 ## What does the script do ?
 
 Script performs the following operations:-
 
-1. [Create non-root user and give it "sudo" privilege](..#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
-2. [Generate passphrage protected _ed25519_ SSH Key](..#2-generate-passphrage-protected-ed25519-ssh-keys "Goto details of the step")
-3. [Secure "authorized_keys" file](..#3-secure-authorized_keys-file "Goto details of the step")
-4. [[Optionally] Reset the url for apt repo from VPS provided CDN to OS provided ones](..#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step")
-5. [Update + Upgrade + Install softwares (sudo curl screen ufw fail2ban)](..#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
-6. [Change DNS Server](..#6change-dns-server "Goto details of the step")
-7. [Configure UFW](..#7-configure-ufw "Goto details of the step")
-8. [Configure Fail2Ban](..#8-configure-fail2ban "Goto details of the step")
-9. [Schedule cron for daily system update](..#9-schedule-cron-for-daily-system-update "Goto details of the step")
-10. [[Optionally] Reset _root_ password](..#10-optionally-reset-root-password "Goto details of the step")
-11. [Alter SSH options(/etc/ssh/sshd_config) to do the following:-](..#11-alter-ssh-options "Goto details of the step")
+1. [Create non-root user and give it "sudo" privilege](.#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
+2. [Generate passphrage protected _ed25519_ SSH Key](.#2-generate-passphrage-protected-ed25519-ssh-keys "Goto details of the step")
+3. [Secure "authorized_keys" file](.#3-secure-authorized_keys-file "Goto details of the step")
+4. [[Optionally] Reset the url for apt repo from VPS provided CDN to OS provided ones](.#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step")
+5. [Update + Upgrade + Install softwares (sudo curl screen ufw fail2ban)](.#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
+6. [Change DNS Server](.#6change-dns-server "Goto details of the step")
+7. [Configure UFW](.#7-configure-ufw "Goto details of the step")
+8. [Configure Fail2Ban](.#8-configure-fail2ban "Goto details of the step")
+9. [Schedule cron for daily system update](.#9-schedule-cron-for-daily-system-update "Goto details of the step")
+10. [[Optionally] Reset _root_ password](.#10-optionally-reset-root-password "Goto details of the step")
+11. [Alter SSH options(/etc/ssh/sshd_config) to do the following:-](.#11-alter-ssh-options "Goto details of the step")
 
 -   Disable SSH login for _root_
 -   Disable SSH login through password for all users
@@ -106,7 +124,7 @@ PermitRootLogin no
 PasswordAuthentication no
 ```
 
-12.  [On successfully completing above operations, display the following on screen:-](..#11-display-summary "Goto details of the step")
+12. [On successfully completing above operations, display the following on screen:-](..#11-display-summary "Goto details of the step")
     -   Username
     -   User Password
     -   SSH Private Key's path on the server
@@ -154,7 +172,7 @@ Script _tries_ to recover from an error if it can determine that an error has oc
 
 ![Success With Credentials on Screen - Execution Succeeded 1](/screencaptures/success4.jpg?raw=true "Execution Succeeded 1")
 
-![Success With Credentials on Screen - Execution Succeeded 2](/screencaptures/success5.jpg?raw=true "Execution Succeeded 2")  
+![Success With Credentials on Screen - Execution Succeeded 2](/screencaptures/success5.jpg?raw=true "Execution Succeeded 2")
 
 ---
 
@@ -264,8 +282,9 @@ This is disabled by default.
 >
 > **Impact of Restoration Failure** - You may not be able to install or update the system. Manually check if any \*\_bkp file exists in /etc/apt/ directory. If multiple file exist - use the most recent file and rename it to /etc/apt/sources.list
 >
-> **After Error** - Script continues to next step after restoration. 
+> **After Error** - Script continues to next step after restoration.
 >
+
 __Note__ - When script fails on this step - it won't attempt restoring earlier steps.
 
 ### 5. Updates + Upgrades + Installs required softwares (sudo screen ufw fail2ban)
@@ -282,25 +301,25 @@ Pretty self-explanatory.
 >
 > **After Error** - Script continues to next step.
 
-__Note__ - When script fails on this step - it won't attempt restoring earlier steps. Also, as it is evident from above, script does NOT uninstall already installed programs even when error occors in this step or any other step. Because, you might have installed those programs before running the script or those programs might have been preloaded by the OS itself - too many variables to consider.
-
-
+**Note** - When script fails on this step - it won't attempt restoring earlier steps. Also, as it is evident from above, script does NOT uninstall already installed programs even when error occors in this step or any other step. Because, you might have installed those programs before running the script or those programs might have been preloaded by the OS itself - too many variables to consider.
 
 ### 6. Change DNS Server
 
-Instead of using server/VPS provided DNS servers, we use [OpenNIC]("https://servers.opennic.org/") provided ones. OpenNIC is a volunteer-operated DNS (Domain Name System) provider that aims to be an alternative to the standard DNS. This is more for privacy reasons than security. I personally trust volunteer run DNS providers (like OpenNIC) than those run by big organizations (like Google or Cloudflare). If you would rather use [Cloudflare's 1.1.1.1]("https://www.cloudflare.com/learning/dns/what-is-1.1.1.1/") DNS use `--CloudflareDNS`  or `-cf` option to do so.
-
+Instead of using server/VPS provided DNS servers, we use [OpenNIC]("https://servers.opennic.org/") provided ones. OpenNIC is a volunteer-operated DNS (Domain Name System) provider that aims to be an alternative to the standard DNS. This is more for privacy reasons than security. I personally trust volunteer run DNS providers (like OpenNIC) than those run by big organizations (like Google or Cloudflare). If you would rather use [Cloudflare's 1.1.1.1]("https://www.cloudflare.com/learning/dns/what-is-1.1.1.1/") DNS use `--CloudflareDNS` or `-cf` option to do so.
 
 Following are the DNS IP we use:-
+
 #### OpenNIC
 
 The servers we use are anycast - so would be faster for everyone. Also we chose servers that do not keep logs. It is fast enough but [not as fast as Google DNS or Cloudflare 1.1.1.1]("https://www.networkworld.com/article/3194890/comparing-the-performance-of-popular-public-dns-providers.html").
 
 ##### IPv4
+
 185.121.177.177</br>
 169.239.202.202
 
 ##### IPv6
+
 2a05:dfc7:5::53</br>
 2a05:dfc7:5::53
 
@@ -318,7 +337,7 @@ Reason I go for Cloudflare and NOT Google is due to the later's sketchy privacy 
 >
 > **After Error** - Script continues to next step.
 
-__Note__ - When script fails on this step - it won't attempt restoring earlier steps.
+**Note** - When script fails on this step - it won't attempt restoring earlier steps.
 
 ### 7. Configure UFW
 
@@ -335,8 +354,8 @@ This script sets up UFW so that only **ssh**(required for user login), **http**(
 > **Impact of Restoration Failure** - Most probably UFW was not installed properly. Check log file for details.
 >
 > **After Error** - Continue to next step after restoration.
-> 
-__Note__ - When script fails on this step - it won't attempt restoring earlier steps.
+>
+> **Note** - When script fails on this step - it won't attempt restoring earlier steps.
 
 ### 8. Configure Fail2Ban
 
@@ -361,7 +380,7 @@ This script sets up Fail2ban as following:-
 >
 > **After Error** - Continue to next step after restoration.
 
-__Note__ - When script fails on this step - it won't attempt restoring earlier steps.
+**Note** - When script fails on this step - it won't attempt restoring earlier steps.
 
 ### 9. Schedule cron for daily system update
 
@@ -382,14 +401,14 @@ user@host:~$ sudo apt-get dist-upgrade
 > **Impact of Restoration Failure** - The cron job might execute once a day and _fail_. You might have to delete the file (/etc/cron.daily/linux_init_harden_apt_update.sh) manually.
 >
 > **After Error** - Continue to next step.
-> 
-__Note__ - When script fails on this step - it won't attempt restoring earlier steps.
+>
+> **Note** - When script fails on this step - it won't attempt restoring earlier steps.
 
 ### 10. [Optionally] Reset root password
 
 Some VPS providers send you the password of your VPS's _root_ user in email - in plain text. If so, that password needs to be changed immediately. **But, we will disable _root_ login AND password login in the next step, so changing _root_ password might be a slight overkill**. But, still...
 
-Also, most VPS providers these days allow you to provide SSH Public Key in their website. If you have done that you can skip this step. **It is disabled by default anyways**.
+Also, most VPS providers nowadays allow you to provide SSH Public Key on their website. If you have done that you can skip this step. **This option is disabled by default**.
 
 To change your _root_ password provide option `-r` or `--resetrootpw`. _root_ password will be auto generated. Passwords are 20 character long, containing a mixture of special-symbols, English upper & lower characters and numbers.
 
@@ -403,7 +422,7 @@ To change your _root_ password provide option `-r` or `--resetrootpw`. _root_ pa
 >
 > **After Error** - Continue to next step.
 
-__Note__ - When script fails on this step - it won't attempt restoring earlier steps.
+**Note** - When script fails on this step - it won't attempt restoring earlier steps.
 
 ### 11. Alter SSH options
 
@@ -419,24 +438,25 @@ This step contines from step 3 to harden our ssh login. Here, we edit _/etc/ssh/
 >
 > **Restoration** - Delete user and its home directory; Disable UFW: If back up of /etc/fail2ban/jail.local file found, then that is restored; else back up of /etc/fail2ban/jail.conf is restored. Also, back up of /etc/fail2ban/jail.d/defaults-debian.conf file restored if available. Restore the /etc/ssh/sshd_config file from backup file created before the operation.
 >
-> **Impact of Restoration Failure** - Fatal. DO NOT logout of the session. If you do then, you may not be able to log back in. Check the log file to see what went wrong. Issue the following command and see what is the out put. 
+> **Impact of Restoration Failure** - Fatal. DO NOT logout of the session. If you do then, you may not be able to log back in. Check the log file to see what went wrong. Issue the following command and see what is the out put.
 >
 > ```console
 > root@host:~# service sshd restart
 > ```
+>
 > Search the error message on internet for solution.
-> 
+>
 > **After Error** - Script will be terminated.
 
 ### 12. Display Summary
 
 All the generated username, passwords, SSH Key location & SSH Keys themselves are displayed on the screen.
 
-This might not be desired (nosy neighbours) however. To NOT show the details on screen and find them from the log file use `-hide` option.
+This might not be desired (nosy neighbours). To NOT show the details on screen and find them from the log file use `-hide` option.
 
 NOTE - while we login through SSH Keys, you will still be asked for your password (after logging in) while installing softwares and for other administrative operations. So, you NEED ALL of the information displayed on the screen.
 
-The logfile is located in /tmp/ directory - hence will be removed when server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen as well.
+The logfile is located in /tmp/ - hence will be removed when server reboots. All the details shown on the screen and a lot more can be found in the log. Exact logfile location will be shown on the screen.
 
 ## FAQ
 
@@ -531,9 +551,9 @@ root@host:~$ wget -q https://raw.githubusercontent.com/pratiktri/server_init_har
 -   [x] New - Add commented license to script itself
 -   [ ] New - Add github URL on usage()
 -   [ ] New - Enable LUKS (is it even worth it???)
--   [ ] New - Change DNS to OpenNIC Anycast servers (185.121.177.177 & 169.239.202.202)?
--   [ ] New - Only checks before starting the script should be root-check and "apt" check.
--   [ ] Update - Remove Ubuntu 14.x support - way too old
+-   [ ] New - Only checks before starting the script should be root-check and "apt" check. Don't want to change
+-   [ ] Update - Remove Ubuntu 14.x support - way too old - No systemd - probably has many security holes.
+-   [ ] New - add logs to syslog as well (all or only error?)
 
 ## License
 
