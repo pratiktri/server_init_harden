@@ -17,11 +17,7 @@ This script can potentially make your server inaccessible.
 
 **If your network connection gets reset during this operation; you won't be able to log back in to the server**.
 
-### Trust on VPS
-
-This script generates username, password (for the user AND _root_), SSH Key, SSH Key Passphrase **on the server**. Infact, we store both the SSH Keys (Public & Private) on the server after the operation completes. Your VPS _can_ see all of these.
-
-So, if you think your server/VPS provider might snoop on you - all these security won't really matter. The security this script provides is from actors other than your server(VPS) and you.
+Read [FAQ](#faq) and [Operation Details](#details-of-each-operation) for more.
 
 ## Usage
 
@@ -80,7 +76,7 @@ Below restrictions apply to usernames -
     4. SSH Passphrase
     5. New _root_ password (if you chose to change it with `-r`)
 
--   From a terminal login using the following command:-
+-   From a terminal - login using the following command:-
 
 ```console
     $ ssh -i [full-path-of-ssh-private-key-file] [username]@[server-ip]
@@ -537,6 +533,12 @@ root@host:~$ wget -q https://raw.githubusercontent.com/pratiktri/server_init_har
 
 root@host:~$ wget -q https://raw.githubusercontent.com/pratiktri/server_init_harden/master/init-linux-harden.sh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh -u someusername -r -d -q -hide
 ```
+
+Q - I do not trust my server provider, will this script keep my stuff hidden from them?
+
+Ans - This script generates username, password (for the user AND _root_), SSH Key, SSH Key Passphrase **on the server**. Infact, we store both the SSH Keys (Public & Private) on the server after the operation completes. Your VPS _can_ see all of these.
+
+So, if you think your server/VPS provider might snoop on you - all these security won't really matter. The security this script provides is from actors other than your server(VPS) and you.
 
 ## Todo
 
