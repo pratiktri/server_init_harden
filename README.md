@@ -103,17 +103,17 @@ Provide user-password at this prompt.
 
 Script performs the following operations:-
 
-1. [Create non-root user and give it "sudo" privilege](.#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
-2. [Generate passphrage protected _ed25519_ SSH Key](.#2-generate-passphrage-protected-ed25519-ssh-keys "Goto details of the step")
-3. [Secure "authorized_keys" file](.#3-secure-authorized_keys-file "Goto details of the step")
-4. [[Optionally] Reset the url for apt repo from VPS provided CDN to OS provided ones](.#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step")
-5. [Update + Upgrade + Install softwares (sudo curl screen ufw fail2ban)](.#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
-6. [Change DNS Server](.#6change-dns-server "Goto details of the step")
-7. [Configure UFW](.#7-configure-ufw "Goto details of the step")
-8. [Configure Fail2Ban](.#8-configure-fail2ban "Goto details of the step")
-9. [Schedule cron for daily system update](.#9-schedule-cron-for-daily-system-update "Goto details of the step")
-10. [[Optionally] Reset _root_ password](.#10-optionally-reset-root-password "Goto details of the step")
-11. [Alter SSH options(/etc/ssh/sshd_config) to do the following:-](.#11-alter-ssh-options "Goto details of the step")
+1. [Create non-root user and give it "sudo" privilege](#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
+2. [Generate passphrage protected _ed25519_ SSH Key](#2-generate-passphrage-protected-ed25519-ssh-keys "Goto details of the step")
+3. [Secure "authorized_keys" file](#3-secure-authorized_keys-file "Goto details of the step")
+4. [[Optionally] Reset the url for apt repo from VPS provided CDN to OS provided ones](#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step")
+5. [Update + Upgrade + Install softwares (sudo curl screen ufw fail2ban)](#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
+6. [Change DNS Server](#6change-dns-server "Goto details of the step")
+7. [Configure UFW](#7-configure-ufw "Goto details of the step")
+8. [Configure Fail2Ban](#8-configure-fail2ban "Goto details of the step")
+9. [Schedule cron for daily system update](#9-schedule-cron-for-daily-system-update "Goto details of the step")
+10. [[Optionally] Reset _root_ password](#10-optionally-reset-root-password "Goto details of the step")
+11. [Alter SSH options(/etc/ssh/sshd_config) to do the following:-](#11-alter-ssh-options "Goto details of the step")
 
 -   Disable SSH login for _root_
 -   Disable SSH login through password for all users
@@ -124,7 +124,7 @@ PermitRootLogin no
 PasswordAuthentication no
 ```
 
-12. [On successfully completing above operations, display the following on screen:-](..#11-display-summary "Goto details of the step")
+12. [On successfully completing above operations, display the following on screen:-](#12-display-summary "Goto details of the step")
     -   Username
     -   User Password
     -   SSH Private Key's path on the server
