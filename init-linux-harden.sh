@@ -25,10 +25,6 @@
 #TODO                          revert_config_fail2ban
 #TODO                          revert_ssh_only_login
 
-#TODO DNS
-##  Implement DNS change logic
-##  Add another option --CloudflareDNS -cf
-
 SCRIPT_NAME=linux_init_harden
 SCRIPT_VERSION=1.0
 

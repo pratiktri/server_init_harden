@@ -7,6 +7,7 @@ This script is meant to save that time.
 
 This script is intended to be executed _**immediately**_ after you have access to a _**new**_ Linux server (most likely a VPS) as _**root**_.
 
+
 ## Status
 
 Stable. Production ready.
@@ -552,10 +553,14 @@ So, if you think your server/VPS provider might snoop on you - all these securit
 -   [x] Update README - Assumptions - TOFU, Trust on VPS provider vis-a-vis creating SSH keys on the server
 -   [x] New - Add commented license to script itself
 -   [ ] New - Add github URL on usage()
--   [ ] New - Enable LUKS (is it even worth it???)
+-   [ ] New - add logs to syslog as well (all or only error?)
+-   [ ] New - Unattended upgrades
+-   [ ] New - PSAD
+-   [ ] New - Separate iptables Log File
+-   [ ] New - Remove Short Diffie-Hellman Keys
 -   [ ] New - Only checks before starting the script should be root-check and "apt" check. Don't want to change
 -   [ ] Update - Remove Ubuntu 14.x support - way too old - No systemd - probably has many security holes.
--   [ ] New - add logs to syslog as well (all or only error?)
+-   [ ] New - Enable LUKS (is it even worth it???)
 
 ## License
 
