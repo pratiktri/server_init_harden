@@ -7,7 +7,6 @@ This script is meant to save that time.
 
 This script is intended to be executed _**immediately**_ after you have access to a _**new**_ Linux server (most likely a VPS) as _**root**_.
 
-
 ## Status
 
 Stable. Production ready.
