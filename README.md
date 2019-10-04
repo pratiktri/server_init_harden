@@ -9,7 +9,7 @@ This script is intended to be executed _**immediately**_ after you have access t
 
 ## Status
 
-Stable. Production ready.
+NOT STABLE.
 
 ## ***WARNING***
 
