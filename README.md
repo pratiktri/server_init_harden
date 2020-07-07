@@ -23,9 +23,11 @@ Stable. Production ready.
 * One of the following Linux flavours
   - Debian 8.x
   - Debian 9.x
+  - Debian 10.x
   - Ubuntu 14.x
   - Ubuntu 16.x
   - Ubuntu 18.x
+  - Ubuntu 20.x
 * *wget* should be installed (comes preinstalled on the above OSes anyways)
 * *root* access to the server
 
