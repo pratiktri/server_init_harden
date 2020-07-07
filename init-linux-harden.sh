@@ -100,9 +100,11 @@ case "$OS" in
             DEB_VER_STR="jessie"
         elif [[ "$VER" -eq 9 ]]; then
             DEB_VER_STR="stretch"
+        elif [[ "$VER" -eq 10 ]]; then
+            DEB_VER_STR="buster"
         else
-            printf "This script only supports Debian 8 and Debian 9\\n"
-            printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10\\n"
+            printf "This script only supports Debian 8, Debian 9, and Debian 10\\n"
+            printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10, and Ubuntu 20.04\\n"
             printf "Your OS is NOT supported.\\n"
             exit 1
         fi
@@ -116,9 +118,11 @@ case "$OS" in
             UBT_VER_STR="bionic"
         elif [[ "$VER" = "18.10" ]]; then
             UBT_VER_STR="cosmic"
+        elif [[ "$VER" = "20.04" ]]; then
+            UBT_VER_STR="focal"
         else
-            printf "This script only supports Debian 8 and Debian 9\\n"
-            printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10\\n"
+            printf "This script only supports Debian 8, Debian 9, and Debian 10\\n"
+            printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10, and Ubuntu 20.04\\n"
             printf "Your OS is NOT supported.\\n"
             exit 1
         fi
