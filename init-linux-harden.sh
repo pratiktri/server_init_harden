@@ -1,4 +1,4 @@
-#!/etc/bin/env bash
+#!/bin/bash
 
 SCRIPT_NAME=linux_init_harden
 SCRIPT_VERSION=1.0
@@ -57,9 +57,20 @@ function usage() {
     exit 1
 }
 
+function os_not_supported() {
+    printf "This script only supports: \\n\\tDebian 9, 10, and 11\\n"
+    printf "\\tUbuntu 16.04, 18.04, 18.10, 20.04, and 21.04\\n"
+    printf "Your OS is NOT supported.\\n"
+}
+
+function new_os_version_warning(){
+  echo "${1} version ${2} is not tested. Continuing is NOT RECOMMENDED."
+  read -p "Continue (NOT RECOMMENDED)? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+}
+
 # Fail-fast: No apt - no good
 if ! command -v apt-get >/dev/null; then
-    print_os_not_supported
+    os_not_supported
     exit 1
 fi
 
@@ -70,7 +81,7 @@ if [ -f /etc/os-release ]; then
     VER=$VERSION_ID
     CODE_NAME=$VERSION_CODENAME
 else
-    print_os_not_supported
+    os_not_supported
     exit 1
 fi
 
@@ -88,25 +99,14 @@ case "$OS" in
         # warn user and ask them to proceed with caution
         UBT_VER_STR=$CODE_NAME
         if [[ "$VER" != "16.04" ]] && [[ "$VER" != "18.04" ]] && [[ "$VER" != "18.10" ]] && [[ "$VER" != "20.04" ]] && [[ "$VER" != "21.04" ]]; then
-          new_os_version_warning
+            new_os_version_warning "${OS}" "${VER}"
         fi
         ;;
     *)
-        print_os_not_supported
+        os_not_supported
         exit 1
         ;;
 esac
-
-function new_os_version_warning(){
-  echo "${OS} version ${VER} is not tested. Continuing is NOT RECOMMENDED."
-  read -p "Continue (NOT RECOMMENDED)? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
-}
-
-function print_os_not_supported(){
-    printf "This script only supports Debian 9, 10, and 11\\n"
-    printf "\\tUbuntu 16.04, 18.04, 18.10, 20.04, and 21.04\\n"
-    printf "Your OS is NOT supported.\\n"
-}
 
 ##################################
 # Parse script arguments
@@ -956,6 +956,7 @@ if [[ $DEFAULT_SOURCE_LIST = "y" ]]; then
 
 # Default sources list for debian
 cat <<DEBIAN >> /etc/apt/sources.list
+
 deb http://deb.debian.org/debian ${DEB_VER_STR} main contrib non-free
 deb-src http://deb.debian.org/debian ${DEB_VER_STR} main contrib non-free
 
@@ -975,6 +976,7 @@ DEBIAN
         elif [[ $OS = "ubuntu" ]]; then
 
 cat <<UBUNTU >> /etc/apt/sources.list
+
 deb http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
 deb-src http://archive.ubuntu.com/ubuntu/ ${UBT_VER_STR} main restricted
 
