@@ -57,59 +57,56 @@ function usage() {
     exit 1
 }
 
+# Fail-fast: No apt - no good
+if ! command -v apt-get >/dev/null; then
+    print_os_not_supported
+    exit 1
+fi
+
 # Check supported OSes
 if [ -f /etc/os-release ]; then
-    # freedesktop.org and systemd
     . /etc/os-release
     OS=$ID
     VER=$VERSION_ID
+    CODE_NAME=$VERSION_CODENAME
 else
-    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
-    OS=$(uname -s)
-    VER=$(uname -r)
+    print_os_not_supported
+    exit 1
 fi
 
 case "$OS" in
     debian)
-        if [[ "$VER" -eq 8 ]]; then
-            DEB_VER_STR="jessie"
-        elif [[ "$VER" -eq 9 ]]; then
-            DEB_VER_STR="stretch"
-        elif [[ "$VER" -eq 10 ]]; then
-            DEB_VER_STR="buster" 
-        else
-            printf "This script only supports Debian 8 and Debian 9, and Debian 10\\n"
-            printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10, and Ubuntu 20.04\\n"
-            printf "Your OS is NOT supported.\\n"
-            exit 1
+        # If the versions are not 9, 10, 11
+        # warn user and ask them to proceed with caution
+        DEB_VER_STR=$CODE_NAME
+        if ((VER >= 9 && VER <= 11)); then
+            new_os_version_warning
         fi
         ;;
     ubuntu)
-        if [[ "$VER" = "14.04" ]]; then
-            UBT_VER_STR="trusty"
-        elif [[ "$VER" = "16.04" ]]; then
-            UBT_VER_STR="xenial"
-        elif [[ "$VER" = "18.04" ]]; then
-            UBT_VER_STR="bionic"
-        elif [[ "$VER" = "18.10" ]]; then
-            UBT_VER_STR="cosmic"
-        elif [[ "$VER" = "20.04" ]]; then
-            UBT_VER_STR="focal"
-        else
-            printf "This script only supports Debian 8, Debian 9, and Debian 10\\n"
-            printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10, and Ubuntu 20.04\\n"
-            printf "Your OS is NOT supported.\\n"
-            exit 1
+        # If the versions are not 16.04, 18.04, 18.10, 20.04. 21.04
+        # warn user and ask them to proceed with caution
+        UBT_VER_STR=$CODE_NAME
+        if [[ "$VER" != "16.04" ]] && [[ "$VER" != "18.04" ]] && [[ "$VER" != "18.10" ]] && [[ "$VER" != "20.04" ]] && [[ "$VER" != "21.04" ]]; then
+          new_os_version_warning
         fi
         ;;
     *)
-        printf "This script only supports Debian 8 and Debian 9\\n"
-        printf "\\tUbuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Ubuntu 18.10\\n"
-        printf "Your OS is NOT supported.\\n"
+        print_os_not_supported
         exit 1
         ;;
 esac
 
+function new_os_version_warning(){
+  echo "${OS} version ${VER} is not tested. Continuing is NOT RECOMMENDED."
+  read -p "Continue (NOT RECOMMENDED)? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+}
+
+function print_os_not_supported(){
+    printf "This script only supports Debian 9, 10, and 11\\n"
+    printf "\\tUbuntu 16.04, 18.04, 18.10, 20.04, and 21.04\\n"
+    printf "Your OS is NOT supported.\\n"
+}
 
 ##################################
 # Parse script arguments
