@@ -1,14 +1,10 @@
 # Linux Server Hardener
 Bash script that automates server security hardening on a new Linux server.
 
-I wanted to change my VPS(Virtual Private Server) provider and was testing out many providers and many Linux flavours on those VPSes. But before doing anything those servers needed to be given basic amount security and this involved a set of repetitive commands on terminal. Depending on network speed and number of mis-types, these took between 30-90 minutes to perform. 
-
-This script is meant to save that time.
-
 ## *** __WARNING__ ***
 This script can potentially make your server inaccessible. 
 
-At the very least, read the [FAQ section](https://github.com/pratiktri/init-li-harden#faq) before executing.
+At the very least, read the [FAQ section](https://github.com/mikeo85/init-li-harden#faq) before executing.
 
 If your connection gets reset during this operation, you WILL loose all access to the server.
 
@@ -31,14 +27,28 @@ Stable. Production ready.
 * *wget* should be installed (comes preinstalled on the above OSes anyways)
 * *root* access to the server
 
-### Examples
+*Script should also work on OSes __derived__ from Debian or Ubuntu (e.g., Pop!_OS, Kali, Parrot, etc.), though there will be a warning before proceeding. YMMV.*
 
-The script is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VPS) as *__root__*.
+### Download and Execution
 
+The script is intended to be executed immediately after you have access to a *__new__* Linux server (most likely a VM or VPS) as *__root__*.
+
+Download the script
 ```console
-root@host:~# wget -q https://sot.li/hardensh -O init-linux-harden.sh && bash ./init-linux-harden.sh -d -q -hide
-
-root@host:~# wget -q https://sot.li/hardensh -O init-linux-harden.sh && bash ./init-linux-harden.sh --defaultsourcelist --quiet --hide-credentials
+wget -q https://raw.githubusercontent.com/mikeo85/server_init_harden/master/linux-init-harden.sh -O linux-init-harden.sh
+```
+Execute the script using the basic formula `bash ./linux-init-harden.sh [arguments]`. For example:
+- Update default source list to debian.org, use quiet output, hide credentials (only write to log file, not console)
+```console
+bash ./linux-init-harden.sh -d -q -hide
+```
+- Same as above, but with full options names
+```console
+bash ./linux-init-harden.sh --defaultsourcelist --quiet --hide-credentials
+```
+- Give new username & reset the root password
+```console
+bash ./linux-init-harden.sh -u myCoolUsername --resetrootpwd
 ```
 
 > There are inherent risks involved with running scripts directly (without reviewing it first) from web - as done above. Everyone does it anyways, but you have been warned. 
@@ -48,7 +58,7 @@ root@host:~# wget -q https://sot.li/hardensh -O init-linux-harden.sh && bash ./i
 Run the script with below option to see all available options:-
 
 ```console
-root@host:~# bash <(wget -q https://sot.li/hardensh -O -) --help
+bash ./ini-linux-harden.sh --help
 
 Usage: sudo bash $0 [-u|--username username] [-r|--resetrootpwd] [--defaultsourcelist]
   -u,     --username              Username for your server (If omitted script will choose an username for you)
@@ -70,20 +80,20 @@ Below restrictions apply to usernames -
 ## What does it do ?
 Script performs the following operations:-
 
-1. [Create non-root user and give it "sudo" privilege](https://github.com/pratiktri/init-li-harden#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
-2. [Generate passphrage protected *ed25519* SSH Keys](https://github.com/pratiktri/init-li-harden#2-generate-passphrage-protected-ed25519-ssh-keys-private--public "Goto details of the step")
-3. [Secure "authorized_keys" file](https://github.com/pratiktri/init-li-harden#3-secure-authorized_keys-file "Goto details of the step")
-4. [[Optionally] Reset the url for apt repo from VPS provided CDN to OS provided ones](https://github.com/pratiktri/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step")
-5. [Update + Upgrade + Install softwares (sudo curl screen ufw fail2ban)](https://github.com/pratiktri/init-li-harden#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
-6. [Configure UFW](https://github.com/pratiktri/init-li-harden#6-configure-ufw "Goto details of the step")
-7. [Configure Fail2Ban](https://github.com/pratiktri/init-li-harden#7-configure-fail2ban "Goto details of the step")
-8. [Schedule cron for daily system update](https://github.com/pratiktri/init-li-harden#8-schedule-cron-for-daily-system-update "Goto details of the step")
-9.  [[Optionally] Reset *root* password](https://github.com/pratiktri/init-li-harden#9-optionally-reset-root-password "Goto details of the step")
-10. [Alter SSH options(/etc/ssh/sshd_config) to do the following:-](https://github.com/pratiktri/init-li-harden#10-alter-ssh-options "Goto details of the step")
+1. [Create non-root user and give it "sudo" privilege](https://github.com/mikeo85/init-li-harden#1-create-non-root-user-and-give-it-sudo-privilege "Goto details of the step")
+2. [Generate passphrage protected *ed25519* SSH Keys](https://github.com/mikeo85/init-li-harden#2-generate-passphrage-protected-ed25519-ssh-keys-private--public "Goto details of the step")
+3. ~~[Secure "authorized_keys" file](https://github.com/mikeo85/init-li-harden#3-secure-authorized_keys-file "Goto details of the step")~~
+4. [[Optionally] Reset the url for apt repo from VPS provided CDN to OS provided ones](https://github.com/mikeo85/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step")
+5. [Update + Upgrade + Install softwares (sudo curl screen ufw fail2ban)](https://github.com/mikeo85/init-li-harden#5-updates--upgrades--installs-required-softwares-sudo--screen-ufw-fail2ban "Goto details of the step")
+6. [Configure UFW](https://github.com/mikeo85/init-li-harden#6-configure-ufw "Goto details of the step")
+7. [Configure Fail2Ban](https://github.com/mikeo85/init-li-harden#7-configure-fail2ban "Goto details of the step")
+8. [Schedule cron for daily system update](https://github.com/mikeo85/init-li-harden#8-schedule-cron-for-daily-system-update "Goto details of the step")
+9.  [[Optionally] Reset *root* password](https://github.com/mikeo85/init-li-harden#9-optionally-reset-root-password "Goto details of the step")
+10. [Alter SSH options(/etc/ssh/sshd_config) to do the following:-](https://github.com/mikeo85/init-li-harden#10-alter-ssh-options "Goto details of the step")
    * Disable SSH login for *root* (PermitRootLogin no)
    * Disable SSH login through password for all users (PasswordAuthentication no) 
    * Updates path for *authoried_keys* file
-11. [On successfully completing above operations, display the following on screen:-](https://github.com/pratiktri/init-li-harden#11-display-summary "Goto details of the step")
+11. [On successfully completing above operations, display the following on screen:-](https://github.com/mikeo85/init-li-harden#11-display-summary "Goto details of the step")
     * Username
     * User Password
     * SSH Private Key's path on the server
@@ -108,9 +118,9 @@ Script creates a back of every file that it changes.
 
 Back up files are stored in the same directory as the original file. 
 
-Back up file name = (Original File Name) + "." + (Script start timestamp in '%d_%m_%Y-%H_%M_%S' format) + "_bak"
+Back up file name = (Original File Name) + "." + (Script start timestamp in ISO-style date-time format in UTC) + ".bak"
 
-So, if the original file name was *sshd_config* and the script was started at 25th January 2019 09:15:25, then the backup files name would be *sshd_config.25_01_2019-09_15_25_bak*
+So, if the original file name was *sshd_config* and the script was started at 25th January 2019 09:15:25 EST, then the backup files name would be *sshd_config.2019-01-25T141525UTC.bak*
 
 ### Recovery
 Script *tries* to recover from an error if it can determine that an error has occured. What it does to recover depends on which step the error has occured.
@@ -145,7 +155,7 @@ When accepting username through "--username", __*script actively rejects special
 
 If "--username" is not provided, __*script will randomly generate an username for you*__. Script generated usernames are 9 character long and are alphanumeric (i.e., numbers & English characters).
 
-Password for the user is __always__ randomly generated. Passwords are 15 character long and are alphanumeric as well.
+Password for the user is __always__ randomly generated. Passwords are 30 characters long and are alphanumeric as well.
 
 #### Error Handling
 
@@ -187,15 +197,15 @@ SSH Public Key is then *appended* to /home/*__[username]__*/.ssh/authorized_keys
 
 
 
-### 3. Secure "authorized_keys" file
+<!-- ### 3. Secure "authorized_keys" file
 "authorized_keys" file present in user's .ssh sub-directory contains the Public Key values. These Public Key values are used to authenticate user logins. Since, this is an important file we need to secure it tight. 
 
 Following are the file access restrictions that the script applies:-
 * Make *root* user the owner of /home/*__[username]__*/.ssh/ directory and all files inside it.
 * Give *root* group access to /home/*__[username]__*/.ssh/ directory and all files inside it.
 * Make the /home/*__[username]__*/.ssh/ directory and all files inside it visible only to the *root* user.
-* Remove the editing rights on /home/*__[username]__*/.ssh/authorized_keys file from every user - including *root*.
-* Make the /home/*__[username]__*/.ssh/authorized_keys file immutable.
+* Remove the editing rights on /home/*__[username]__*/.ssh/authorized_keys file from every user - including *root*. -->
+<!-- * Make the /home/*__[username]__*/.ssh/authorized_keys file immutable. -->
 
 #### Error Handling
 
@@ -366,7 +376,7 @@ Ans - NO.
 
 Q - Why is it not idempotent?
 
-Ans - We take backup of the file which stays on your server after operations. After taking back up of the file - __script sometimes comments out older configuration__. This is specifically true for [Step 4](https://github.com/pratiktri/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step") where we comment out older configurations and append new ones to the end of the file. Also, for the SSH configuration file (/etc/ssh/sshd_conf) where we comment out the line of configuration and add the new configuration below the commented out line. So, if we re-run the script multiple times, those changes would compound as listed below. 
+Ans - We take backup of the file which stays on your server after operations. After taking back up of the file - __script sometimes comments out older configuration__. This is specifically true for [Step 4](https://github.com/mikeo85/init-li-harden#4-optionally-reset-the-url--for-apt-repo-from-vps-provided-cdn-to-os-provided-ones "Goto details of the step") where we comment out older configurations and append new ones to the end of the file. Also, for the SSH configuration file (/etc/ssh/sshd_conf) where we comment out the line of configuration and add the new configuration below the commented out line. So, if we re-run the script multiple times, those changes would compound as listed below. 
 
  1. Multiple backup files of _sources.list_ in _/etc/apt/_ directory. eg - _sources.list.13_02_2019-01_21_07_bak_ for each execution.
  2. Many commented out lines on _/etc/apt/sources.list_ file.
@@ -424,9 +434,9 @@ Ans - User belongs to "sudo" group => Yes
 
 Run the script with "sudo" privileges:-
 ```console
-root@host:~# wget -q https://sot.li/hardensh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh --username someusername --resetrootpwd --defaultsourcelist --quiet --hide-credentials
+root@host:~# wget -q https://raw.githubusercontent.com/mikeo85/server_init_harden/master/linux-init-harden.sh -O linux-init-harden.sh && sudo bash ./linux-init-harden.sh --username someusername --resetrootpwd --defaultsourcelist --quiet --hide-credentials
 
-root@host:~# wget -q https://sot.li/hardensh -O init-linux-harden.sh && sudo bash ./init-linux-harden.sh -u someusername -r -d -q -hide
+root@host:~# wget -q https://raw.githubusercontent.com/mikeo85/server_init_harden/master/linux-init-harden.sh -O linux-init-harden.sh && sudo bash ./linux-init-harden.sh -u someusername -r -d -q -hide
 ```
 
 ## Todo
