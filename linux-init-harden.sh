@@ -916,7 +916,8 @@ if [[ $USER_EXISTS == "n" ]]; then
 
         # Create the user and assign the above password
         file_log "Creating user"
-        echo -e "${USER_PASS}\\n${USER_PASS}" | adduser "$NORM_USER_NAME" -q --home /home/$NORM_USER_NAME --gecos "First Last,RoomNumber,WorkPhone,HomePhone"
+        #echo -e "${USER_PASS}\\n${USER_PASS}" | adduser "$NORM_USER_NAME" -q --home /home/$NORM_USER_NAME --gecos "First Last,RoomNumber,WorkPhone,HomePhone"
+        echo -e "${USER_PASS}\\n${USER_PASS}" | adduser "$NORM_USER_NAME" -q --gecos "First Last,RoomNumber,WorkPhone,HomePhone"
         set_exit_code $?
 
         # Give root privilages to the above user
@@ -942,10 +943,12 @@ setup_step_start "${STEP_TEXT[1]}"
         file_log "Creating SSH directory - $SSH_DIR"
         mkdir -p "$SSH_DIR"
         set_exit_code $?
+    else
+        file_log "Existing SSH Directory - $SSH_DIR"
     fi
 
-    # # Generate a 15 character random password for key
-    # KEY_PASS="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 15)"
+    # # Generate a 30 character random password for key
+    # KEY_PASS="$(< /dev/urandom tr -cd "[:alnum:]" | head -c 30)"
     # file_log "Generated SSH Key Passphrase - ${KEY_PASS}"
     # set_exit_code $?
 
