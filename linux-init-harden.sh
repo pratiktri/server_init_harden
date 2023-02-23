@@ -916,7 +916,7 @@ if [[ $USER_EXISTS == "n" ]]; then
 
         # Create the user and assign the above password
         file_log "Creating user"
-        echo -e "${USER_PASS}\\n${USER_PASS}" | adduser "$NORM_USER_NAME" -q -d --gecos "First Last,RoomNumber,WorkPhone,HomePhone"
+        echo -e "${USER_PASS}\\n${USER_PASS}" | adduser "$NORM_USER_NAME" -q --home /home/$NORM_USER_NAME --gecos "First Last,RoomNumber,WorkPhone,HomePhone"
         set_exit_code $?
 
         # Give root privilages to the above user
