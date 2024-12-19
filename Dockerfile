@@ -1,23 +1,33 @@
-# Use Debian Slim as base image
-FROM debian:stable-slim
+# Fail2ban failed
+# FROM debian:12-slim
 
-# Install necessary dependencies
-RUN apt-get update && apt-get install -y \
-    sudo \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# UFW failed
+# FROM debian:11-slim
 
-# Set working directory
+# All good
+FROM ubuntu:24.10
+
+# All good
+# FROM ubuntu:24.04
+
+# All good
+# FROM ubuntu:22.04
+
+# Fail2ban failed
+# FROM ubuntu:20.04
+
+# User creation failed, Fail2ban failed
+# FROM fedora:41
+
+# User creation failed, Fail2ban failed
+# FROM fedora:40
+# RUN dnf update -y && dnf install -y sudo openssh-server && dnf clean all && systemctl enable sshd
+
+RUN apt-get update && apt-get install -y sudo openssh-server && rm -rf /var/lib/apt/lists/* && service ssh start
+
 WORKDIR /script
-
-# Copy the initialization script
-COPY init-linux-harden.sh /script/
-
-# Make the script executable
-RUN chmod +x /script/init-linux-harden.sh
-
-# Set entrypoint to run the script
-ENTRYPOINT ["/bin/sh", "-c"]
+COPY init-linux-harden.sh .
+RUN chmod +x init-linux-harden.sh
 
 # Default command to run the script
-CMD ["/script/init-linux-harden.sh"]
+CMD ["./init-linux-harden.sh", "-u", "test"]
